@@ -40,7 +40,7 @@ def run_forever() -> None:
             except Exception:
                 LOGGER.exception("Monitor loop failed; will retry on next poll")
                 try:
-                    process_due_notifications(db, config.discord_webhook_url)
+                    process_due_notifications(db, config.discord_webhook_url, config.ping_lead_minutes)
                 except Exception:
                     LOGGER.exception("Failed to process due notifications after monitor loop error")
 
@@ -87,6 +87,8 @@ def run_sqlite_cycle(config, db: Database, client: YataClient) -> None:
                 current_normalized_restock_at=event.normalized_at,
                 historical_restock_times=historical_times,
                 history_window=config.prediction_history_window,
+                departure_buffer_minutes=config.github_actions_delay_buffer_minutes,
+                ping_lead_minutes=config.ping_lead_minutes,
             )
             prediction_id = db.insert_prediction(prediction)
             LOGGER.info(
@@ -100,7 +102,7 @@ def run_sqlite_cycle(config, db: Database, client: YataClient) -> None:
     else:
         LOGGER.info("No stock event detected; quantity unchanged at %s", observation.quantity)
 
-    process_due_notifications(db, config.discord_webhook_url)
+    process_due_notifications(db, config.discord_webhook_url, config.ping_lead_minutes)
 
 
 def _install_signal_handlers(stop_event: threading.Event) -> None:

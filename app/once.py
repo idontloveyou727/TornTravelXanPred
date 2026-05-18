@@ -106,6 +106,8 @@ def _handle_json_restock(config: Config, state: dict, event) -> None:
         current_normalized_restock_at=normalized,
         historical_restock_times=recent_restock_datetimes(state),
         history_window=config.prediction_history_window,
+        departure_buffer_minutes=config.github_actions_delay_buffer_minutes,
+        ping_lead_minutes=config.ping_lead_minutes,
     )
 
     if state.get("last_notified_restock_normalized_at") != normalized_key:
@@ -155,9 +157,9 @@ def process_json_due_notifications(config: Config, state: dict, *, now) -> None:
             prediction = prediction_from_json(notification["prediction"])
             notification_type = str(notification["notification_type"])
             if notification_type == AIRSTRIP_DEPARTURE_REMINDER:
-                content = format_airstrip_reminder(prediction)
+                content = format_airstrip_reminder(prediction, config.ping_lead_minutes)
             elif notification_type == BUSINESS_DEPARTURE_REMINDER:
-                content = format_business_reminder(prediction)
+                content = format_business_reminder(prediction, config.ping_lead_minutes)
             else:
                 notification["status"] = "FAILED"
                 notification["error_message"] = f"Unknown notification type: {notification_type}"

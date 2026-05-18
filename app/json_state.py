@@ -120,6 +120,10 @@ def prediction_to_json(prediction: Prediction) -> dict[str, Any]:
         "prediction_method": prediction.prediction_method,
         "airstrip_departure_at": encode_dt(prediction.airstrip_departure_at),
         "business_departure_at": encode_dt(prediction.business_departure_at),
+        "airstrip_recommended_departure_at": encode_dt(prediction.airstrip_recommended_departure_at),
+        "business_recommended_departure_at": encode_dt(prediction.business_recommended_departure_at),
+        "airstrip_latest_departure_at": encode_dt(prediction.airstrip_latest_departure_at),
+        "business_latest_departure_at": encode_dt(prediction.business_latest_departure_at),
         "airstrip_ping_at": encode_dt(prediction.airstrip_ping_at),
         "business_ping_at": encode_dt(prediction.business_ping_at),
     }
@@ -131,8 +135,14 @@ def prediction_from_json(data: dict[str, Any]) -> Prediction:
         predicted_restock_at=decode_dt(str(data["predicted_restock_at"])),
         predicted_interval_ticks=int(data["predicted_interval_ticks"]),
         prediction_method=str(data["prediction_method"]),
-        airstrip_departure_at=decode_dt(str(data["airstrip_departure_at"])),
-        business_departure_at=decode_dt(str(data["business_departure_at"])),
+        airstrip_departure_at=decode_dt(str(data.get("airstrip_recommended_departure_at", data["airstrip_departure_at"]))),
+        business_departure_at=decode_dt(str(data.get("business_recommended_departure_at", data["business_departure_at"]))),
+        airstrip_latest_departure_at=decode_dt(
+            str(data.get("airstrip_latest_departure_at", data["airstrip_departure_at"]))
+        ),
+        business_latest_departure_at=decode_dt(
+            str(data.get("business_latest_departure_at", data["business_departure_at"]))
+        ),
         airstrip_ping_at=decode_dt(str(data["airstrip_ping_at"])),
         business_ping_at=decode_dt(str(data["business_ping_at"])),
     )

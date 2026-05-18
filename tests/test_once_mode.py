@@ -34,6 +34,8 @@ def make_config(tmp_path: Path) -> Config:
         database_path=tmp_path / "local.sqlite3",
         state_backend="json",
         state_path=tmp_path / "state.json",
+        github_actions_delay_buffer_minutes=5,
+        ping_lead_minutes=0,
         prediction_history_window=10,
         log_level="INFO",
     )

@@ -34,6 +34,15 @@ class Prediction:
     prediction_method: str
     airstrip_departure_at: datetime
     business_departure_at: datetime
+    airstrip_latest_departure_at: datetime
+    business_latest_departure_at: datetime
     airstrip_ping_at: datetime
     business_ping_at: datetime
 
+    @property
+    def airstrip_recommended_departure_at(self) -> datetime:
+        return self.airstrip_departure_at
+
+    @property
+    def business_recommended_departure_at(self) -> datetime:
+        return self.business_departure_at

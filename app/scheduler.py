@@ -51,12 +51,12 @@ def create_notifications_for_restock(
     )
 
 
-def process_due_notifications(db: Database, webhook_url: str | None) -> None:
+def process_due_notifications(db: Database, webhook_url: str | None, ping_lead_minutes: int = 0) -> None:
     for row in db.due_notifications(utc_now()):
         notification_id = int(row["id"])
         notification_type = str(row["notification_type"])
         try:
-            content = _format_notification(db, notification_type, row)
+            content = _format_notification(db, notification_type, row, ping_lead_minutes)
             ok, error = send_webhook(webhook_url, content)
             db.mark_notification(notification_id, "SENT" if ok else "FAILED", error)
         except Exception as exc:
@@ -93,7 +93,7 @@ def _create_departure_notification(
     )
 
 
-def _format_notification(db: Database, notification_type: str, row) -> str:
+def _format_notification(db: Database, notification_type: str, row, ping_lead_minutes: int = 0) -> str:
     prediction_id = int(row["related_prediction_id"])
     event_id = int(row["related_restock_event_id"]) if row["related_restock_event_id"] is not None else None
     prediction = db.get_prediction(prediction_id)
@@ -104,8 +104,7 @@ def _format_notification(db: Database, notification_type: str, row) -> str:
         event = db.get_event(event_id)
         return format_restock_detected(event, prediction, prediction_id)
     if notification_type == AIRSTRIP_DEPARTURE_REMINDER:
-        return format_airstrip_reminder(prediction)
+        return format_airstrip_reminder(prediction, ping_lead_minutes)
     if notification_type == BUSINESS_DEPARTURE_REMINDER:
-        return format_business_reminder(prediction)
+        return format_business_reminder(prediction, ping_lead_minutes)
     raise ValueError(f"Unknown notification type: {notification_type}")
-

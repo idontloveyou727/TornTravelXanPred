@@ -60,52 +60,87 @@ def send_webhook(url: str | None, content: str, *, max_attempts: int = 3) -> tup
 def format_restock_detected(event: StockEvent, prediction: Prediction, prediction_id: int) -> str:
     return "\n".join(
         [
-            "🇬🇧 UK Item 206 Restock Detected",
+            "UK Item 206 Restock Detected",
             "",
-            f"Observed at: {discord_ts(event.observed_at, 'F')} ({discord_ts(event.observed_at, 'R')})",
-            f"Normalized restock tick: {discord_ts(event.normalized_at, 'F') if event.normalized_at else 'unknown'}",
+            f"Observed at: {_format_ts_pair(event.observed_at)}",
+            f"Normalized restock tick: {_format_ts_pair(event.normalized_at) if event.normalized_at else 'unknown'}",
             f"Quantity: {event.current_quantity}",
             "",
-            f"Next predicted restock: {discord_ts(prediction.predicted_restock_at, 'F')} ({discord_ts(prediction.predicted_restock_at, 'R')})",
+            f"Next predicted restock: {_format_ts_pair(prediction.predicted_restock_at)}",
             f"Prediction interval: {prediction.predicted_interval_ticks} ticks",
             f"Prediction ID: {prediction_id}",
             "",
             "Recommended departures:",
-            f"Airstrip: {discord_ts(prediction.airstrip_departure_at, 'F')} ({discord_ts(prediction.airstrip_departure_at, 'R')})",
-            f"Business: {discord_ts(prediction.business_departure_at, 'F')} ({discord_ts(prediction.business_departure_at, 'R')})",
+            "Airstrip:",
+            f"- Latest safe flight: {_format_ts_pair(prediction.airstrip_latest_departure_at)}",
+            f"- Recommended departure: {_format_ts_pair(prediction.airstrip_recommended_departure_at)}",
+            f"- Ping scheduled: {_format_ts_pair(prediction.airstrip_ping_at)}",
+            "",
+            "Business Class:",
+            f"- Latest safe flight: {_format_ts_pair(prediction.business_latest_departure_at)}",
+            f"- Recommended departure: {_format_ts_pair(prediction.business_recommended_departure_at)}",
+            f"- Ping scheduled: {_format_ts_pair(prediction.business_ping_at)}",
         ]
     )
 
 
-def format_airstrip_reminder(prediction: Prediction) -> str:
+def format_airstrip_reminder(prediction: Prediction, ping_lead_minutes: int = 0) -> str:
     return "\n".join(
         [
-            "🛫 Airstrip Departure Reminder",
+            "Airstrip Departure Reminder",
             "",
             "Predicted UK item 206 restock:",
-            f"{discord_ts(prediction.predicted_restock_at, 'F')} ({discord_ts(prediction.predicted_restock_at, 'R')})",
+            _format_ts_pair(prediction.predicted_restock_at),
+            "",
+            "Latest safe Airstrip flight:",
+            _format_ts_pair(prediction.airstrip_latest_departure_at),
             "",
             "Recommended Airstrip departure:",
-            f"{discord_ts(prediction.airstrip_departure_at, 'F')} ({discord_ts(prediction.airstrip_departure_at, 'R')})",
+            _format_ts_pair(prediction.airstrip_recommended_departure_at),
             "",
-            "This ping is sent 1 minute before recommended departure.",
+            "Ping scheduled:",
+            _format_ts_pair(prediction.airstrip_ping_at),
+            "",
+            _ping_explanation(ping_lead_minutes),
         ]
     )
 
 
-def format_business_reminder(prediction: Prediction) -> str:
+def format_business_reminder(prediction: Prediction, ping_lead_minutes: int = 0) -> str:
     return "\n".join(
         [
-            "💼 Business Class Departure Reminder",
+            "Business Class Departure Reminder",
             "",
             "Predicted UK item 206 restock:",
-            f"{discord_ts(prediction.predicted_restock_at, 'F')} ({discord_ts(prediction.predicted_restock_at, 'R')})",
+            _format_ts_pair(prediction.predicted_restock_at),
+            "",
+            "Latest safe Business Class flight:",
+            _format_ts_pair(prediction.business_latest_departure_at),
             "",
             "Recommended Business Class departure:",
-            f"{discord_ts(prediction.business_departure_at, 'F')} ({discord_ts(prediction.business_departure_at, 'R')})",
+            _format_ts_pair(prediction.business_recommended_departure_at),
             "",
-            "This ping is sent 1 minute before recommended departure.",
+            "Ping scheduled:",
+            _format_ts_pair(prediction.business_ping_at),
+            "",
+            _ping_explanation(ping_lead_minutes),
         ]
+    )
+
+
+def _format_ts_pair(dt: datetime) -> str:
+    return f"{discord_ts(dt, 'F')} ({discord_ts(dt, 'R')})"
+
+
+def _ping_explanation(ping_lead_minutes: int) -> str:
+    if ping_lead_minutes > 0:
+        return (
+            f"This ping is scheduled {ping_lead_minutes} minutes before recommended departure. "
+            "Recommended departure includes a configurable GitHub Actions delay buffer."
+        )
+    return (
+        "This ping is scheduled for the recommended departure time. "
+        "Recommended departure includes a configurable GitHub Actions delay buffer."
     )
 
 

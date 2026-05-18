@@ -27,6 +27,8 @@ Optional variables:
 DISCORD_WEBHOOK_URL=
 DATABASE_PATH=./data/restock_tracker.sqlite3
 PREDICTION_HISTORY_WINDOW=10
+GITHUB_ACTIONS_DELAY_BUFFER_MINUTES=5
+PING_LEAD_MINUTES=0
 LOG_LEVEL=INFO
 ```
 
@@ -116,6 +118,29 @@ Do not commit a Discord webhook to GitHub. If an old webhook was ever shared pub
 The workflow file is `.github/workflows/monitor.yml`. It runs on the schedule `2/5 * * * *`, which means every 5 minutes with a small offset to reduce schedule congestion. It can also be run manually from Actions -> YATA Restock Monitor -> Run workflow.
 
 GitHub scheduled workflows can be delayed or skipped during platform congestion. This mode is free and useful, but it is not true real-time monitoring.
+
+Departure reminder timing is designed around those delays:
+
+- Latest safe departure is calculated as `predicted restock - flight duration`.
+- Recommended departure is shifted earlier by `GITHUB_ACTIONS_DELAY_BUFFER_MINUTES`.
+- Ping time is `recommended departure - PING_LEAD_MINUTES`.
+
+The default GitHub delay buffer is 5 minutes, so a latest safe departure of `00:07` becomes a recommended departure of `00:02`. With `PING_LEAD_MINUTES=0`, the ping is scheduled for `00:02`. If GitHub Actions runs a few minutes late, the notification still has a chance to arrive before the latest safe departure.
+
+Workflow env example:
+
+```yaml
+GITHUB_ACTIONS_DELAY_BUFFER_MINUTES: "5"
+PING_LEAD_MINUTES: "0"
+```
+
+Suggested tuning:
+
+- Normal: delay buffer 5, ping lead 0.
+- Safer: delay buffer 10, ping lead 0.
+- Very safe: delay buffer 10, ping lead 5.
+
+Increasing these values reduces late pings, but it cannot guarantee real-time delivery if GitHub skips or heavily delays scheduled jobs.
 
 ## Behavior
 

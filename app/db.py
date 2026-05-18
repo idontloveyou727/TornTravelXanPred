@@ -70,6 +70,8 @@ class Database:
                 prediction_method TEXT NOT NULL,
                 airstrip_departure_at TEXT NOT NULL,
                 business_departure_at TEXT NOT NULL,
+                airstrip_latest_departure_at TEXT,
+                business_latest_departure_at TEXT,
                 airstrip_ping_at TEXT NOT NULL,
                 business_ping_at TEXT NOT NULL,
                 created_at TEXT NOT NULL,
@@ -98,7 +100,29 @@ class Database:
                 ON notifications(notification_type, related_restock_event_id, related_prediction_id);
             """
         )
+        self._ensure_prediction_latest_columns()
         self.connection.commit()
+
+    def _ensure_prediction_latest_columns(self) -> None:
+        columns = {row["name"] for row in self.connection.execute("PRAGMA table_info(predictions)").fetchall()}
+        if "airstrip_latest_departure_at" not in columns:
+            self.connection.execute("ALTER TABLE predictions ADD COLUMN airstrip_latest_departure_at TEXT")
+        if "business_latest_departure_at" not in columns:
+            self.connection.execute("ALTER TABLE predictions ADD COLUMN business_latest_departure_at TEXT")
+        self.connection.execute(
+            """
+            UPDATE predictions
+            SET airstrip_latest_departure_at = airstrip_departure_at
+            WHERE airstrip_latest_departure_at IS NULL
+            """
+        )
+        self.connection.execute(
+            """
+            UPDATE predictions
+            SET business_latest_departure_at = business_departure_at
+            WHERE business_latest_departure_at IS NULL
+            """
+        )
 
     def insert_observation(self, observation: StockObservation) -> int:
         cursor = self.connection.execute(
@@ -180,8 +204,9 @@ class Database:
             INSERT INTO predictions
                 (based_on_restock_event_id, predicted_restock_at, predicted_interval_ticks,
                  prediction_method, airstrip_departure_at, business_departure_at,
+                 airstrip_latest_departure_at, business_latest_departure_at,
                  airstrip_ping_at, business_ping_at, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 prediction.based_on_restock_event_id,
@@ -190,6 +215,8 @@ class Database:
                 prediction.prediction_method,
                 encode_dt(prediction.airstrip_departure_at),
                 encode_dt(prediction.business_departure_at),
+                encode_dt(prediction.airstrip_latest_departure_at),
+                encode_dt(prediction.business_latest_departure_at),
                 encode_dt(prediction.airstrip_ping_at),
                 encode_dt(prediction.business_ping_at),
                 encode_dt(utc_now()),
@@ -209,6 +236,8 @@ class Database:
             prediction_method=str(row["prediction_method"]),
             airstrip_departure_at=decode_dt(row["airstrip_departure_at"]),
             business_departure_at=decode_dt(row["business_departure_at"]),
+            airstrip_latest_departure_at=decode_dt(row["airstrip_latest_departure_at"] or row["airstrip_departure_at"]),
+            business_latest_departure_at=decode_dt(row["business_latest_departure_at"] or row["business_departure_at"]),
             airstrip_ping_at=decode_dt(row["airstrip_ping_at"]),
             business_ping_at=decode_dt(row["business_ping_at"]),
         )
@@ -293,4 +322,3 @@ class Database:
             (status, sent_at, error_message, notification_id),
         )
         self.connection.commit()
-
