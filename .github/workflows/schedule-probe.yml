@@ -1,0 +1,14 @@
+name: Schedule Probe
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print schedule probe time
+        run: |
+          echo "Schedule probe fired"
+          date -u
