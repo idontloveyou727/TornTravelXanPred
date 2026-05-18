@@ -53,6 +53,36 @@ jobs:
 
           if git diff --cached --quiet; then
             echo "No state changes to commit."
+          elif python - <<'PY'
+          import json
+          import subprocess
+          import sys
+          from pathlib import Path
+
+          STATE_PATH = "data/github_actions_state.json"
+          IGNORED_KEYS = {"last_observed_at"}
+
+          def comparable_state(text):
+              state = json.loads(text)
+              if not isinstance(state, dict):
+                  return state
+              return {key: value for key, value in state.items() if key not in IGNORED_KEYS}
+
+          current = comparable_state(Path(STATE_PATH).read_text(encoding="utf-8"))
+          try:
+              previous_text = subprocess.check_output(
+                  ["git", "show", f"HEAD:{STATE_PATH}"],
+                  stderr=subprocess.DEVNULL,
+                  text=True,
+              )
+              previous = comparable_state(previous_text)
+          except subprocess.CalledProcessError:
+              previous = None
+
+          sys.exit(0 if previous == current else 1)
+          PY
+          then
+            echo "Only last_observed_at changed; skipping commit."
           else
             git commit -m "Update restock monitor state"
             git pull --rebase origin main
