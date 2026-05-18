@@ -2,6 +2,7 @@ name: Schedule Probe
 
 on:
   schedule:
+    # Scheduled by repository owner to refresh GitHub Actions schedule actor.
     - cron: "*/5 * * * *"
 
 jobs:
