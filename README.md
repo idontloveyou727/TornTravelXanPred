@@ -1,0 +1,119 @@
+# YATA UK Item 206 Restock Monitor
+
+Small Python background worker for Render. It polls the YATA travel export API, tracks item `206` in the UK, detects confirmed restocks when quantity changes from `0` to `>0`, normalizes delayed observations down to the previous 5-minute tick, predicts the next restock, and optionally sends Discord webhook notifications.
+
+The worker stores observations, events, predictions, and notification state in SQLite so it can resume from the latest known quantity after a restart and avoid duplicate notifications.
+
+## Environment
+
+Create `.env` from the example:
+
+```bash
+cp .env.example .env
+```
+
+Required variables:
+
+```bash
+YATA_URL=https://yata.yt/api/v1/travel/export/
+ITEM_ID=206
+COUNTRY=UK
+POLL_SECONDS=60
+```
+
+Optional variables:
+
+```bash
+DISCORD_WEBHOOK_URL=
+DATABASE_PATH=./data/restock_tracker.sqlite3
+PREDICTION_HISTORY_WINDOW=10
+LOG_LEVEL=INFO
+```
+
+`DISCORD_WEBHOOK_URL` can be empty. In that mode the worker logs the Discord message content instead of sending it.
+
+## Run Locally
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python monitor.py
+```
+
+On Windows PowerShell:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+python monitor.py
+```
+
+Run tests:
+
+```bash
+pytest
+```
+
+## Render Deployment
+
+This repository includes `render.yaml` for a Render Background Worker:
+
+```yaml
+services:
+  - type: worker
+    name: yata-restock-monitor
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python monitor.py
+```
+
+Deployment steps:
+
+1. Push this folder to GitHub.
+2. In Render, create a new Blueprint from the repository, or create a Background Worker manually.
+3. Use `pip install -r requirements.txt` as the build command.
+4. Use `python monitor.py` as the start command.
+5. Set environment variables in Render:
+
+```bash
+YATA_URL=https://yata.yt/api/v1/travel/export/
+ITEM_ID=206
+COUNTRY=UK
+POLL_SECONDS=10
+DISCORD_WEBHOOK_URL=<your webhook, optional>
+```
+
+For persistent SQLite state on Render, add a persistent disk and set:
+
+```bash
+DATABASE_PATH=/var/data/restock_tracker.sqlite3
+```
+
+Without a persistent disk, Render restarts may lose the local SQLite file. The worker will still run, but restart-safe duplicate prevention depends on persistent storage.
+
+## Behavior
+
+- Fetch timeout is 15 seconds.
+- API failures use retry/backoff and the next monitor loop continues instead of crashing permanently.
+- `SIGTERM` and `SIGINT` trigger graceful shutdown, which is required for Render worker deploys and restarts.
+- Restock detection only fires for `0 -> >0`.
+- Restock timestamps are stored in UTC and normalized using floor-to-previous-5-minute logic, such as `12:07:12 -> 12:05:00`.
+- Discord timestamps use `<t:UNIX:F>` and `<t:UNIX:R>` so Discord renders local time for each viewer.
+- Discord `429` responses are handled by parsing `retry_after` or rate-limit headers; no fixed Discord rate limit is hard-coded.
+
+## Ubuntu systemd Alternative
+
+A systemd unit is included at `systemd/restock-tracker.service` for VM deployment outside Render.
+
+```bash
+sudo useradd --system --create-home restock
+sudo mkdir -p /opt/restock-tracker
+sudo chown -R restock:restock /opt/restock-tracker
+sudo systemctl daemon-reload
+sudo systemctl enable restock-tracker
+sudo systemctl start restock-tracker
+sudo journalctl -u restock-tracker -f
+```
+
