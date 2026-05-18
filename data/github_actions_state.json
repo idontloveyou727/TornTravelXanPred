@@ -1,0 +1,7 @@
+{
+  "last_quantity": null,
+  "last_observed_at": null,
+  "last_restock_normalized_at": null,
+  "last_notified_restock_normalized_at": null,
+  "recent_restock_times": []
+}

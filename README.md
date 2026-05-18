@@ -56,6 +56,12 @@ Run tests:
 pytest
 ```
 
+Run one GitHub Actions-style check locally:
+
+```bash
+STATE_BACKEND=json STATE_PATH=./data/github_actions_state.json python monitor.py --once
+```
+
 ## Render Deployment
 
 This repository includes `render.yaml` for a Render Background Worker:
@@ -93,11 +99,30 @@ DATABASE_PATH=/var/data/restock_tracker.sqlite3
 
 Without a persistent disk, Render restarts may lose the local SQLite file. The worker will still run, but restart-safe duplicate prevention depends on persistent storage.
 
+## Free GitHub Actions Deployment
+
+This repository also supports a free GitHub Actions mode. Unlike Render, GitHub Actions does not run a continuous worker. The workflow runs every 5 minutes, performs one monitor check with `python monitor.py --once`, writes lightweight JSON state to `data/github_actions_state.json`, commits that state file if it changed, and exits.
+
+Setup:
+
+1. Open the GitHub repository.
+2. Go to Settings.
+3. Go to Secrets and variables -> Actions.
+4. Add a repository secret named `DISCORD_WEBHOOK_URL`.
+5. Paste a new Discord webhook as the value.
+
+Do not commit a Discord webhook to GitHub. If an old webhook was ever shared publicly or committed anywhere, regenerate it in Discord before using this workflow.
+
+The workflow file is `.github/workflows/monitor.yml`. It runs on the schedule `2/5 * * * *`, which means every 5 minutes with a small offset to reduce schedule congestion. It can also be run manually from Actions -> YATA Restock Monitor -> Run workflow.
+
+GitHub scheduled workflows can be delayed or skipped during platform congestion. This mode is free and useful, but it is not true real-time monitoring.
+
 ## Behavior
 
 - Fetch timeout is 15 seconds.
 - API failures use retry/backoff and the next monitor loop continues instead of crashing permanently.
 - `SIGTERM` and `SIGINT` trigger graceful shutdown, which is required for Render worker deploys and restarts.
+- `python monitor.py --once` runs one check and exits for GitHub Actions.
 - Restock detection only fires for `0 -> >0`.
 - Restock timestamps are stored in UTC and normalized using floor-to-previous-5-minute logic, such as `12:07:12 -> 12:05:00`.
 - Discord timestamps use `<t:UNIX:F>` and `<t:UNIX:R>` so Discord renders local time for each viewer.
@@ -116,4 +141,3 @@ sudo systemctl enable restock-tracker
 sudo systemctl start restock-tracker
 sudo journalctl -u restock-tracker -f
 ```
-

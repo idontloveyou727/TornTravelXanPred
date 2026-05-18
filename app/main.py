@@ -18,6 +18,10 @@ LOGGER = logging.getLogger(__name__)
 
 
 def main() -> None:
+    run_forever()
+
+
+def run_forever() -> None:
     config = load_config()
     configure_logging(config.log_level)
     LOGGER.info("Starting YATA restock monitor config=%s", config.safe_summary())
@@ -32,7 +36,7 @@ def main() -> None:
     try:
         while not stop_event.is_set():
             try:
-                run_once(config, db, client)
+                run_sqlite_cycle(config, db, client)
             except Exception:
                 LOGGER.exception("Monitor loop failed; will retry on next poll")
                 try:
@@ -46,7 +50,7 @@ def main() -> None:
         LOGGER.info("YATA restock monitor stopped")
 
 
-def run_once(config, db: Database, client: YataClient) -> None:
+def run_sqlite_cycle(config, db: Database, client: YataClient) -> None:
     payload = client.fetch_json()
     observed_at = utc_now().astimezone(timezone.utc)
     previous = db.latest_observation(config.item_id, config.country)

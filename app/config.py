@@ -58,6 +58,8 @@ class Config:
     poll_seconds: int
     discord_webhook_url: str | None
     database_path: Path
+    state_backend: str
+    state_path: Path
     prediction_history_window: int
     log_level: str
 
@@ -70,6 +72,8 @@ class Config:
             "poll_seconds": self.poll_seconds,
             "discord_webhook_enabled": bool(self.discord_webhook_url),
             "database_path": str(self.database_path),
+            "state_backend": self.state_backend,
+            "state_path": str(self.state_path),
             "prediction_history_window": self.prediction_history_window,
             "log_level": self.log_level,
         }
@@ -79,6 +83,7 @@ def load_config() -> Config:
     load_dotenv()
     country = _get_env("COUNTRY", "TARGET_COUNTRY", "UK")
     webhook = os.getenv("DISCORD_WEBHOOK_URL") or None
+    default_state_backend = "json" if os.getenv("GITHUB_ACTIONS", "").casefold() == "true" else "sqlite"
     return Config(
         yata_url=_get_env("YATA_URL", "YATA_TRAVEL_EXPORT_URL", DEFAULT_YATA_URL),
         item_id=_parse_int("ITEM_ID", "TARGET_ITEM_ID", 206),
@@ -87,7 +92,8 @@ def load_config() -> Config:
         poll_seconds=_parse_int("POLL_SECONDS", "POLL_INTERVAL_SECONDS", 60),
         discord_webhook_url=webhook,
         database_path=Path(_get_env("DATABASE_PATH", None, "./data/restock_tracker.sqlite3")),
+        state_backend=_get_env("STATE_BACKEND", None, default_state_backend).casefold(),
+        state_path=Path(_get_env("STATE_PATH", None, "./data/github_actions_state.json")),
         prediction_history_window=_parse_int("PREDICTION_HISTORY_WINDOW", None, 10),
         log_level=_get_env("LOG_LEVEL", None, "INFO").upper(),
     )
-
