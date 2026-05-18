@@ -1,7 +1,9 @@
 {
-  "last_quantity": null,
-  "last_observed_at": null,
-  "last_restock_normalized_at": null,
   "last_notified_restock_normalized_at": null,
-  "recent_restock_times": []
+  "last_observed_at": "2026-05-18T11:52:59.433737+00:00",
+  "last_quantity": 0,
+  "last_restock_normalized_at": null,
+  "pending_notifications": [],
+  "recent_restock_times": [],
+  "sent_notification_keys": []
 }
