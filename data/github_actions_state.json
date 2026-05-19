@@ -1,6 +1,6 @@
 {
   "last_notified_restock_normalized_at": "2026-05-19T04:20:00+00:00",
-  "last_observed_at": "2026-05-19T04:28:23.008715+00:00",
+  "last_observed_at": "2026-05-19T04:42:25.925904+00:00",
   "last_quantity": 0,
   "last_restock_normalized_at": "2026-05-19T04:20:00+00:00",
   "pending_notifications": [
@@ -225,6 +225,7 @@
       "target_time": "2026-05-19T03:19:00+00:00"
     },
     {
+      "error_message": null,
       "key": "AIRSTRIP_DEPARTURE_REMINDER:2026-05-19T04:20:00+00:00:2026-05-19T04:41:00+00:00",
       "notification_type": "AIRSTRIP_DEPARTURE_REMINDER",
       "prediction": {
@@ -241,7 +242,8 @@
         "predicted_restock_at": "2026-05-19T06:35:00+00:00",
         "prediction_method": "MEDIAN_HISTORY"
       },
-      "status": "PENDING",
+      "sent_at": "2026-05-19T04:42:25.926124+00:00",
+      "status": "SENT",
       "target_time": "2026-05-19T04:41:00+00:00"
     },
     {
@@ -283,6 +285,7 @@
     "AIRSTRIP_DEPARTURE_REMINDER:2026-05-18T23:50:00+00:00:2026-05-19T00:11:00+00:00",
     "BUSINESS_DEPARTURE_REMINDER:2026-05-18T23:50:00+00:00:2026-05-19T01:14:00+00:00",
     "AIRSTRIP_DEPARTURE_REMINDER:2026-05-19T02:00:00+00:00:2026-05-19T02:16:00+00:00",
-    "BUSINESS_DEPARTURE_REMINDER:2026-05-19T02:00:00+00:00:2026-05-19T03:19:00+00:00"
+    "BUSINESS_DEPARTURE_REMINDER:2026-05-19T02:00:00+00:00:2026-05-19T03:19:00+00:00",
+    "AIRSTRIP_DEPARTURE_REMINDER:2026-05-19T04:20:00+00:00:2026-05-19T04:41:00+00:00"
   ]
 }
