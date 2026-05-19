@@ -1,6 +1,13 @@
 {
+  "depletion_rate_history": [],
+  "depletion_rate_per_minute": null,
+  "depletion_to_restock_interval_ticks": [],
+  "last_estimated_depleted_at": null,
+  "last_estimated_restock_at": null,
   "last_notified_restock_normalized_at": "2026-05-19T06:15:00+00:00",
-  "last_observed_at": "2026-05-19T06:32:24.806502+00:00",
+  "last_observed_at": "2026-05-19T07:08:25.618334+00:00",
+  "last_positive_observation": null,
+  "last_predicted_restock_at": null,
   "last_quantity": 0,
   "last_restock_normalized_at": "2026-05-19T06:15:00+00:00",
   "pending_notifications": [
@@ -311,6 +318,7 @@
       "target_time": "2026-05-19T07:34:00+00:00"
     }
   ],
+  "recent_depleted_times": [],
   "recent_restock_times": [
     "2026-05-18T17:05:00+00:00",
     "2026-05-18T19:20:00+00:00",
