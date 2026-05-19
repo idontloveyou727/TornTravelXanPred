@@ -249,12 +249,12 @@ def _handle_json_depletion(config: Config, state: dict, previous) -> None:
 def _schedule_json_departure_reminders(config: Config, state: dict, prediction, *, restock_key: str, now) -> None:
     reminders = []
     if config.enable_airstrip_pings:
-        reminders.append((AIRSTRIP_DEPARTURE_REMINDER, prediction.airstrip_ping_at))
+        reminders.append((AIRSTRIP_DEPARTURE_REMINDER, prediction.airstrip_ping_at, prediction.airstrip_latest_departure_at))
     if config.enable_business_class_pings:
-        reminders.append((BUSINESS_DEPARTURE_REMINDER, prediction.business_ping_at))
-    for notification_type, target_time in reminders:
+        reminders.append((BUSINESS_DEPARTURE_REMINDER, prediction.business_ping_at, prediction.business_latest_departure_at))
+    for notification_type, target_time, latest_safe_time in reminders:
         key = f"{notification_type}:{restock_key}:{encode_dt(target_time)}"
-        if target_time <= now:
+        if target_time <= now and latest_safe_time <= now:
             LOGGER.info("Skipping missed JSON reminder type=%s target_time=%s", notification_type, target_time.isoformat())
             mark_notification_sent(state, key)
             continue

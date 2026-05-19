@@ -6,7 +6,8 @@ import monitor
 from app.config import Config
 from app.discord_webhook import discord_ts
 from app.json_state import JsonStateStore
-from app.once import run_json_once
+from app.once import _schedule_json_departure_reminders, process_json_due_notifications, run_json_once
+from app.predictor import METHOD_DEFAULT, build_prediction
 
 
 class FakeClient:
@@ -137,3 +138,47 @@ def test_json_depletion_schedules_only_enabled_departure_pings(monkeypatch, tmp_
     final_state = store.load()
     assert len(final_state["pending_notifications"]) == 1
     assert final_state["pending_notifications"][0]["notification_type"] == "AIRSTRIP_DEPARTURE_REMINDER"
+
+
+def test_json_late_departure_ping_sends_when_latest_safe_is_still_future(monkeypatch, tmp_path) -> None:
+    config = replace(make_config(tmp_path), enable_business_class_pings=False)
+    state = JsonStateStore(config.state_path).load()
+    prediction = build_prediction(
+        event_id=0,
+        predicted_restock_at=datetime(2026, 1, 1, 12, 0, tzinfo=timezone.utc),
+        interval_ticks=125,
+        method=METHOD_DEFAULT,
+        departure_buffer_minutes=5,
+        ping_lead_minutes=0,
+    )
+    now = datetime(2026, 1, 1, 10, 5, tzinfo=timezone.utc)
+    sent_messages = []
+    monkeypatch.setattr("app.once.send_webhook", lambda _url, content: sent_messages.append(content) or (True, None))
+
+    _schedule_json_departure_reminders(config, state, prediction, restock_key="test", now=now)
+    process_json_due_notifications(config, state, now=now)
+
+    assert len(sent_messages) == 1
+    assert "Airstrip Departure Reminder" in sent_messages[0]
+    assert state["pending_notifications"][0]["status"] == "SENT"
+
+
+def test_json_late_departure_ping_skips_after_latest_safe_passed(tmp_path) -> None:
+    config = replace(make_config(tmp_path), enable_business_class_pings=False)
+    state = JsonStateStore(config.state_path).load()
+    prediction = build_prediction(
+        event_id=0,
+        predicted_restock_at=datetime(2026, 1, 1, 12, 0, tzinfo=timezone.utc),
+        interval_ticks=125,
+        method=METHOD_DEFAULT,
+        departure_buffer_minutes=5,
+        ping_lead_minutes=0,
+    )
+    now = datetime(2026, 1, 1, 10, 10, tzinfo=timezone.utc)
+
+    _schedule_json_departure_reminders(config, state, prediction, restock_key="test", now=now)
+
+    assert state["pending_notifications"] == []
+    assert state["sent_notification_keys"] == [
+        "AIRSTRIP_DEPARTURE_REMINDER:test:2026-01-01T10:04:00+00:00"
+    ]

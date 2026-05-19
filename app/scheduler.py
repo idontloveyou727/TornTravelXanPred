@@ -42,6 +42,7 @@ def create_notifications_for_restock(
             event_id=event_id,
             prediction_id=prediction_id,
             target_time=prediction.airstrip_ping_at,
+            latest_safe_time=prediction.airstrip_latest_departure_at,
             now=now,
         )
     if enable_business_class_pings:
@@ -51,6 +52,7 @@ def create_notifications_for_restock(
             event_id=event_id,
             prediction_id=prediction_id,
             target_time=prediction.business_ping_at,
+            latest_safe_time=prediction.business_latest_departure_at,
             now=now,
         )
 
@@ -97,9 +99,10 @@ def _create_departure_notification(
     event_id: int,
     prediction_id: int,
     target_time: datetime,
+    latest_safe_time: datetime,
     now: datetime,
 ) -> None:
-    if target_time <= now:
+    if target_time <= now and latest_safe_time <= now:
         db.create_notification_once(
             notification_type=notification_type,
             related_restock_event_id=event_id,
