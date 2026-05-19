@@ -8,13 +8,12 @@ def dt(hour: int, minute: int, second: int = 0) -> datetime:
 
 
 def test_floor_to_5_minute_tick_examples() -> None:
-    assert floor_to_5_minute_tick(dt(12, 7, 12)) == dt(12, 5)
-    assert floor_to_5_minute_tick(dt(12, 9, 59)) == dt(12, 5)
+    assert floor_to_5_minute_tick(dt(12, 7, 12)) == dt(12, 7)
+    assert floor_to_5_minute_tick(dt(12, 9, 59)) == dt(12, 9)
     assert floor_to_5_minute_tick(dt(12, 10, 1)) == dt(12, 10)
     assert floor_to_5_minute_tick(dt(8, 5, 0)) == dt(8, 5)
-    assert floor_to_5_minute_tick(dt(23, 59, 59)) == dt(23, 55)
+    assert floor_to_5_minute_tick(dt(23, 59, 59)) == dt(23, 59)
 
 
 def test_add_ticks() -> None:
-    assert add_ticks(dt(8, 5), 25) == dt(10, 10)
-
+    assert add_ticks(dt(8, 5), 125) == dt(10, 10)

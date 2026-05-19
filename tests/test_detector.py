@@ -35,8 +35,8 @@ def test_restock() -> None:
     event = detect_stock_event(obs(0), obs(10))
     assert event is not None
     assert event.event_type == EVENT_RESTOCK
-    assert event.normalized_at == datetime(2026, 5, 18, 12, 5, tzinfo=timezone.utc)
-    assert event.source_delay_seconds == 132
+    assert event.normalized_at == datetime(2026, 5, 18, 12, 7, tzinfo=timezone.utc)
+    assert event.source_delay_seconds == 12
 
 
 def test_out_of_stock() -> None:
@@ -59,4 +59,3 @@ def test_quantity_increase_not_from_zero() -> None:
 
 def test_unchanged_zero() -> None:
     assert detect_stock_event(obs(0), obs(0)) is None
-

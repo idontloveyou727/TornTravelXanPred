@@ -62,6 +62,8 @@ class Config:
     state_path: Path
     github_actions_delay_buffer_minutes: int
     ping_lead_minutes: int
+    default_depletion_rate_per_minute: float
+    depletion_rate_history_window: int
     prediction_history_window: int
     log_level: str
 
@@ -78,6 +80,8 @@ class Config:
             "state_path": str(self.state_path),
             "github_actions_delay_buffer_minutes": self.github_actions_delay_buffer_minutes,
             "ping_lead_minutes": self.ping_lead_minutes,
+            "default_depletion_rate_per_minute": self.default_depletion_rate_per_minute,
+            "depletion_rate_history_window": self.depletion_rate_history_window,
             "prediction_history_window": self.prediction_history_window,
             "log_level": self.log_level,
         }
@@ -100,6 +104,19 @@ def load_config() -> Config:
         state_path=Path(_get_env("STATE_PATH", None, "./data/github_actions_state.json")),
         github_actions_delay_buffer_minutes=_parse_int("GITHUB_ACTIONS_DELAY_BUFFER_MINUTES", None, 5, minimum=0),
         ping_lead_minutes=_parse_int("PING_LEAD_MINUTES", None, 0, minimum=0),
+        default_depletion_rate_per_minute=_parse_float("DEFAULT_DEPLETION_RATE_PER_MINUTE", None, 312.5, minimum=0.0001),
+        depletion_rate_history_window=_parse_int("DEPLETION_RATE_HISTORY_WINDOW", None, 20),
         prediction_history_window=_parse_int("PREDICTION_HISTORY_WINDOW", None, 10),
         log_level=_get_env("LOG_LEVEL", None, "INFO").upper(),
     )
+
+
+def _parse_float(name: str, fallback_name: str | None, default: float, minimum: float = 0.0) -> float:
+    raw = _get_env(name, fallback_name, str(default))
+    try:
+        value = float(raw)
+    except ValueError as exc:
+        raise ValueError(f"{name} must be a number, got {raw!r}") from exc
+    if value < minimum:
+        raise ValueError(f"{name} must be >= {minimum}, got {value}")
+    return value

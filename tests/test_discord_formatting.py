@@ -27,7 +27,7 @@ def test_restock_message_includes_departure_breakdown() -> None:
         based_on_restock_event_id=1,
         predicted_restock_at=datetime(2026, 1, 1, 14, 10, tzinfo=timezone.utc),
         predicted_interval_ticks=25,
-        prediction_method="DEFAULT_25_TICKS",
+        prediction_method="DEFAULT_125_TICKS",
         airstrip_departure_at=datetime(2026, 1, 1, 12, 14, tzinfo=timezone.utc),
         business_departure_at=datetime(2026, 1, 1, 13, 17, tzinfo=timezone.utc),
         airstrip_latest_departure_at=datetime(2026, 1, 1, 12, 19, tzinfo=timezone.utc),

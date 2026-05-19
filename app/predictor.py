@@ -6,10 +6,10 @@ from statistics import median
 from app.models import Prediction
 from app.tick import add_ticks, diff_in_ticks, floor_to_5_minute_tick, is_aligned_to_5_minute_tick
 
-DEFAULT_PREDICTION_TICKS = 25
+DEFAULT_PREDICTION_TICKS = 125
 AIRSTRIP_DURATION = timedelta(hours=1, minutes=51)
 BUSINESS_DURATION = timedelta(minutes=48)
-METHOD_DEFAULT = "DEFAULT_25_TICKS"
+METHOD_DEFAULT = "DEFAULT_125_TICKS"
 METHOD_MEDIAN = "MEDIAN_HISTORY"
 
 
@@ -21,9 +21,10 @@ def predict_next_restock(
     history_window: int,
     departure_buffer_minutes: int = 0,
     ping_lead_minutes: int = 0,
+    historical_interval_ticks: list[int] | None = None,
 ) -> Prediction:
     normalized_current = floor_to_5_minute_tick(current_normalized_restock_at)
-    intervals = _recent_intervals(historical_restock_times, history_window)
+    intervals = (historical_interval_ticks or _recent_intervals(historical_restock_times, history_window))[-history_window:]
     if len(intervals) < 3:
         interval_ticks = DEFAULT_PREDICTION_TICKS
         method = METHOD_DEFAULT

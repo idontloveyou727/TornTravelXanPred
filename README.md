@@ -29,6 +29,8 @@ DATABASE_PATH=./data/restock_tracker.sqlite3
 PREDICTION_HISTORY_WINDOW=10
 GITHUB_ACTIONS_DELAY_BUFFER_MINUTES=5
 PING_LEAD_MINUTES=0
+DEFAULT_DEPLETION_RATE_PER_MINUTE=312.5
+DEPLETION_RATE_HISTORY_WINDOW=20
 LOG_LEVEL=INFO
 ```
 
@@ -124,6 +126,8 @@ Departure reminder timing is designed around those delays:
 - Latest safe departure is calculated as `predicted restock - flight duration`.
 - Recommended departure is shifted earlier by `GITHUB_ACTIONS_DELAY_BUFFER_MINUTES`.
 - Ping time is `recommended departure - PING_LEAD_MINUTES`.
+- Ticks are now one minute, and prediction anchors to the estimated depleted timestamp rather than the observed restock timestamp.
+- The default stock depletion rate is `312.5` units/minute, based on a 2500-unit restock selling out in 8 minutes. The monitor updates this from clean `>0 -> >0` quantity drops and ignores `0 -> >0` and `>0 -> 0` edges for rate learning.
 
 The default GitHub delay buffer is 5 minutes, so a latest safe departure of `00:07` becomes a recommended departure of `00:02`. With `PING_LEAD_MINUTES=0`, the ping is scheduled for `00:02`. If GitHub Actions runs a few minutes late, the notification still has a chance to arrive before the latest safe departure.
 
@@ -132,6 +136,8 @@ Workflow env example:
 ```yaml
 GITHUB_ACTIONS_DELAY_BUFFER_MINUTES: "5"
 PING_LEAD_MINUTES: "0"
+DEFAULT_DEPLETION_RATE_PER_MINUTE: "312.5"
+DEPLETION_RATE_HISTORY_WINDOW: "20"
 ```
 
 Suggested tuning:

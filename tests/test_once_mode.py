@@ -36,6 +36,8 @@ def make_config(tmp_path: Path) -> Config:
         state_path=tmp_path / "state.json",
         github_actions_delay_buffer_minutes=5,
         ping_lead_minutes=0,
+        default_depletion_rate_per_minute=312.5,
+        depletion_rate_history_window=20,
         prediction_history_window=10,
         log_level="INFO",
     )
@@ -72,5 +74,5 @@ def test_json_once_prevents_duplicate_restock_notifications(monkeypatch, tmp_pat
     final_state = store.load()
     assert len(sent_messages) == 1
     assert final_state["last_quantity"] == 10
-    assert final_state["last_restock_normalized_at"] == "2026-05-18T12:05:00+00:00"
-    assert final_state["last_notified_restock_normalized_at"] == "2026-05-18T12:05:00+00:00"
+    assert final_state["last_restock_normalized_at"] == "2026-05-18T11:59:00+00:00"
+    assert final_state["last_notified_restock_normalized_at"] == "2026-05-18T11:59:00+00:00"

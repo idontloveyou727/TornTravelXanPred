@@ -14,7 +14,15 @@ DEFAULT_STATE: dict[str, Any] = {
     "last_observed_at": None,
     "last_restock_normalized_at": None,
     "last_notified_restock_normalized_at": None,
+    "last_estimated_depleted_at": None,
+    "last_estimated_restock_at": None,
+    "last_predicted_restock_at": None,
     "recent_restock_times": [],
+    "recent_depleted_times": [],
+    "depletion_rate_per_minute": None,
+    "depletion_rate_history": [],
+    "depletion_to_restock_interval_ticks": [],
+    "last_positive_observation": None,
     "pending_notifications": [],
     "sent_notification_keys": [],
 }
@@ -59,6 +67,28 @@ def previous_observation_from_state(state: dict[str, Any], *, item_id: int, coun
 def update_last_observation(state: dict[str, Any], observation: StockObservation) -> None:
     state["last_quantity"] = observation.quantity
     state["last_observed_at"] = encode_dt(observation.observed_at)
+    if observation.quantity > 0:
+        state["last_positive_observation"] = observation_to_json(observation)
+
+
+def observation_to_json(observation: StockObservation) -> dict[str, Any]:
+    return {
+        "observed_at": encode_dt(observation.observed_at),
+        "item_id": observation.item_id,
+        "country": observation.country,
+        "quantity": observation.quantity,
+    }
+
+
+def observation_from_json(data: dict[str, Any] | None) -> StockObservation | None:
+    if not data:
+        return None
+    return StockObservation(
+        observed_at=decode_dt(str(data["observed_at"])),
+        item_id=int(data["item_id"]),
+        country=str(data["country"]),
+        quantity=int(data["quantity"]),
+    )
 
 
 def add_recent_restock_time(state: dict[str, Any], normalized_at: datetime, *, max_items: int) -> None:
@@ -68,6 +98,32 @@ def add_recent_restock_time(state: dict[str, Any], normalized_at: datetime, *, m
         values.append(normalized)
     state["recent_restock_times"] = values[-max_items:]
     state["last_restock_normalized_at"] = normalized
+
+
+def add_recent_depleted_time(state: dict[str, Any], depleted_at: datetime, *, max_items: int) -> None:
+    encoded = encode_dt(depleted_at)
+    values = [str(value) for value in state.get("recent_depleted_times", [])]
+    if not values or values[-1] != encoded:
+        values.append(encoded)
+    state["recent_depleted_times"] = values[-max_items:]
+    state["last_estimated_depleted_at"] = encoded
+
+
+def add_depletion_rate(state: dict[str, Any], rate_per_minute: float, *, max_items: int) -> None:
+    if rate_per_minute <= 0:
+        return
+    values = [float(value) for value in state.get("depletion_rate_history", []) if float(value) > 0]
+    values.append(float(rate_per_minute))
+    state["depletion_rate_history"] = values[-max_items:]
+    state["depletion_rate_per_minute"] = float(rate_per_minute)
+
+
+def add_depletion_to_restock_interval(state: dict[str, Any], ticks: int, *, max_items: int) -> None:
+    if ticks <= 0:
+        return
+    values = [int(value) for value in state.get("depletion_to_restock_interval_ticks", []) if int(value) > 0]
+    values.append(int(ticks))
+    state["depletion_to_restock_interval_ticks"] = values[-max_items:]
 
 
 def recent_restock_datetimes(state: dict[str, Any]) -> list[datetime]:

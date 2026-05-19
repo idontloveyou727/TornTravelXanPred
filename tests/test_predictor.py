@@ -19,16 +19,16 @@ def test_default_prediction_when_history_has_fewer_than_three_intervals() -> Non
     )
 
     assert prediction.predicted_restock_at == dt(10, 10)
-    assert prediction.predicted_interval_ticks == 25
+    assert prediction.predicted_interval_ticks == 125
     assert prediction.prediction_method == METHOD_DEFAULT
 
 
 def test_median_prediction() -> None:
-    intervals = [24, 25, 25, 26, 30]
+    intervals = [120, 125, 125, 126, 130]
     start = dt(0, 0)
     restocks = [start]
     for ticks in intervals:
-        restocks.append(restocks[-1] + timedelta(minutes=ticks * 5))
+        restocks.append(restocks[-1] + timedelta(minutes=ticks))
 
     prediction = predict_next_restock(
         current_restock_event_id=1,
@@ -39,7 +39,7 @@ def test_median_prediction() -> None:
         ping_lead_minutes=0,
     )
 
-    assert prediction.predicted_interval_ticks == 25
+    assert prediction.predicted_interval_ticks == 125
     assert prediction.prediction_method == METHOD_MEDIAN
     assert prediction.predicted_restock_at == restocks[-1] + timedelta(minutes=125)
     assert is_aligned_to_5_minute_tick(prediction.predicted_restock_at)

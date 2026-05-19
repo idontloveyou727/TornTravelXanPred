@@ -4,14 +4,24 @@ import logging
 from datetime import timezone
 
 from app.config import Config
-from app.db import Database, encode_dt, utc_now
-from app.detector import EVENT_RESTOCK, detect_stock_event
+from app.db import Database, decode_dt, encode_dt, utc_now
+from app.depletion import (
+    calculate_depletion_rate_per_minute,
+    estimate_depleted_time_from_last_positive,
+    estimate_restock_time_from_observation,
+    stable_depletion_rate,
+)
+from app.detector import EVENT_OUT_OF_STOCK, EVENT_RESTOCK, detect_stock_event
 from app.discord_webhook import format_airstrip_reminder, format_business_reminder, format_restock_detected, send_webhook
 from app.json_state import (
     JsonStateStore,
+    add_depletion_rate,
+    add_depletion_to_restock_interval,
     add_pending_notification_once,
+    add_recent_depleted_time,
     add_recent_restock_time,
     mark_notification_sent,
+    observation_from_json,
     prediction_from_json,
     previous_observation_from_state,
     recent_restock_datetimes,
@@ -21,6 +31,7 @@ from app.main import run_sqlite_cycle
 from app.parser import StockParseError, extract_stock_observation
 from app.predictor import predict_next_restock
 from app.scheduler import AIRSTRIP_DEPARTURE_REMINDER, BUSINESS_DEPARTURE_REMINDER
+from app.tick import diff_in_ticks
 from app.yata_client import YataClient, YataClientError
 
 LOGGER = logging.getLogger(__name__)
@@ -71,6 +82,7 @@ def run_json_once(config: Config, client: YataClient) -> None:
             observed_at=observed_at,
         )
         event = detect_stock_event(previous, observation)
+        _update_json_depletion_rate(config, state, previous, observation)
 
         LOGGER.info(
             "JSON state check item_id=%s country=%s previous_quantity=%s current_quantity=%s",
@@ -81,7 +93,9 @@ def run_json_once(config: Config, client: YataClient) -> None:
         )
 
         if event and event.event_type == EVENT_RESTOCK and event.normalized_at is not None:
-            _handle_json_restock(config, state, event)
+            _handle_json_restock(config, state, event, observation)
+        elif event and event.event_type == EVENT_OUT_OF_STOCK:
+            _handle_json_depletion(config, state, previous)
         elif event:
             LOGGER.info("Detected stock event type=%s", event.event_type)
         else:
@@ -96,18 +110,43 @@ def run_json_once(config: Config, client: YataClient) -> None:
         store.save(state)
 
 
-def _handle_json_restock(config: Config, state: dict, event) -> None:
-    normalized = event.normalized_at
+def _update_json_depletion_rate(config: Config, state: dict, previous, observation) -> None:
+    if previous is None:
+        return
+    rate = calculate_depletion_rate_per_minute(previous, observation)
+    if rate is None:
+        return
+    add_depletion_rate(state, rate, max_items=config.depletion_rate_history_window)
+    LOGGER.info("Recorded depletion_rate_per_minute=%s", round(rate, 4))
+
+
+def _effective_depletion_rate(config: Config, state: dict) -> float:
+    return stable_depletion_rate(
+        [float(value) for value in state.get("depletion_rate_history", [])],
+        default_rate=config.default_depletion_rate_per_minute,
+    )
+
+
+def _handle_json_restock(config: Config, state: dict, event, observation) -> None:
+    rate = _effective_depletion_rate(config, state)
+    normalized = estimate_restock_time_from_observation(observation, rate)
     normalized_key = encode_dt(normalized)
+    state["last_estimated_restock_at"] = normalized_key
     add_recent_restock_time(state, normalized, max_items=config.prediction_history_window + 1)
+    depleted_key = state.get("last_estimated_depleted_at")
+    if depleted_key:
+        interval_ticks = diff_in_ticks(decode_dt(depleted_key), normalized)
+        add_depletion_to_restock_interval(state, interval_ticks, max_items=config.prediction_history_window)
+        LOGGER.info("Recorded depletion_to_restock_interval_ticks=%s", interval_ticks)
 
     prediction = predict_next_restock(
         current_restock_event_id=0,
-        current_normalized_restock_at=normalized,
+        current_normalized_restock_at=decode_dt(depleted_key) if depleted_key else normalized,
         historical_restock_times=recent_restock_datetimes(state),
         history_window=config.prediction_history_window,
         departure_buffer_minutes=config.github_actions_delay_buffer_minutes,
         ping_lead_minutes=config.ping_lead_minutes,
+        historical_interval_ticks=[int(value) for value in state.get("depletion_to_restock_interval_ticks", [])],
     )
 
     if state.get("last_notified_restock_normalized_at") != normalized_key:
@@ -121,7 +160,45 @@ def _handle_json_restock(config: Config, state: dict, event) -> None:
     else:
         LOGGER.info("Skipped duplicate JSON restock notification normalized_at=%s", normalized_key)
 
-    _schedule_json_departure_reminders(config, state, prediction, restock_key=normalized_key, now=utc_now())
+    if not depleted_key:
+        _schedule_json_departure_reminders(config, state, prediction, restock_key=normalized_key, now=utc_now())
+
+
+def _handle_json_depletion(config: Config, state: dict, previous) -> None:
+    last_positive = observation_from_json(state.get("last_positive_observation"))
+    if last_positive is None and previous is not None and previous.quantity > 0:
+        last_positive = previous
+    if last_positive is None:
+        LOGGER.warning("Out-of-stock event has no last positive observation for depletion estimate")
+        return
+
+    rate = _effective_depletion_rate(config, state)
+    estimate = estimate_depleted_time_from_last_positive(last_positive, rate)
+    add_recent_depleted_time(state, estimate.estimated_at, max_items=config.prediction_history_window + 1)
+    LOGGER.info(
+        "Estimated depleted_at=%s source_quantity=%s drpm=%s",
+        estimate.estimated_at.isoformat(),
+        estimate.source_quantity,
+        round(estimate.rate_per_minute, 4),
+    )
+
+    prediction = predict_next_restock(
+        current_restock_event_id=0,
+        current_normalized_restock_at=estimate.estimated_at,
+        historical_restock_times=[],
+        history_window=config.prediction_history_window,
+        departure_buffer_minutes=config.github_actions_delay_buffer_minutes,
+        ping_lead_minutes=config.ping_lead_minutes,
+        historical_interval_ticks=[int(value) for value in state.get("depletion_to_restock_interval_ticks", [])],
+    )
+    state["last_predicted_restock_at"] = encode_dt(prediction.predicted_restock_at)
+    _schedule_json_departure_reminders(
+        config,
+        state,
+        prediction,
+        restock_key=encode_dt(estimate.estimated_at),
+        now=utc_now(),
+    )
 
 
 def _schedule_json_departure_reminders(config: Config, state: dict, prediction, *, restock_key: str, now) -> None:
