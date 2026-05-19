@@ -66,7 +66,7 @@ def format_restock_detected(
     include_business: bool = True,
 ) -> str:
     lines = [
-        "UK Item 206 Restock Detected",
+        "UK Xanax Restock Detected",
         "",
         f"Observed at: {_format_ts_pair(event.observed_at)}",
         f"Normalized restock tick: {_format_ts_pair(event.normalized_at) if event.normalized_at else 'unknown'}",
@@ -107,7 +107,7 @@ def format_airstrip_reminder(prediction: Prediction, ping_lead_minutes: int = 0)
         [
             "Airstrip Departure Reminder",
             "",
-            "Predicted UK item 206 restock:",
+            "Predicted UK Xanax restock:",
             _format_ts_pair(prediction.predicted_restock_at),
             "",
             "Latest safe Airstrip flight:",
@@ -129,7 +129,7 @@ def format_business_reminder(prediction: Prediction, ping_lead_minutes: int = 0)
         [
             "Business Class Departure Reminder",
             "",
-            "Predicted UK item 206 restock:",
+            "Predicted UK Xanax restock:",
             _format_ts_pair(prediction.predicted_restock_at),
             "",
             "Latest safe Business Class flight:",
