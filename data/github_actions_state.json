@@ -7,18 +7,18 @@
   ],
   "depletion_rate_per_minute": 386.575588865477,
   "depletion_to_restock_interval_ticks": [],
-  "last_estimated_depleted_at": null,
+  "last_estimated_depleted_at": "2026-05-19T08:31:00+00:00",
   "last_estimated_restock_at": "2026-05-19T08:19:00+00:00",
   "last_notified_restock_normalized_at": "2026-05-19T08:19:00+00:00",
-  "last_observed_at": "2026-05-19T08:28:37.062552+00:00",
+  "last_observed_at": "2026-05-19T08:30:49.092659+00:00",
   "last_positive_observation": {
     "country": "UK",
     "item_id": 206,
     "observed_at": "2026-05-19T08:28:37.062552+00:00",
     "quantity": 369
   },
-  "last_predicted_restock_at": null,
-  "last_quantity": 369,
+  "last_predicted_restock_at": "2026-05-19T10:36:00+00:00",
+  "last_quantity": 0,
   "last_restock_normalized_at": "2026-05-19T08:19:00+00:00",
   "pending_notifications": [
     {
@@ -368,9 +368,51 @@
       },
       "status": "PENDING",
       "target_time": "2026-05-19T09:38:00+00:00"
+    },
+    {
+      "key": "AIRSTRIP_DEPARTURE_REMINDER:2026-05-19T08:31:00+00:00:2026-05-19T08:42:00+00:00",
+      "notification_type": "AIRSTRIP_DEPARTURE_REMINDER",
+      "prediction": {
+        "airstrip_departure_at": "2026-05-19T08:42:00+00:00",
+        "airstrip_latest_departure_at": "2026-05-19T08:45:00+00:00",
+        "airstrip_ping_at": "2026-05-19T08:42:00+00:00",
+        "airstrip_recommended_departure_at": "2026-05-19T08:42:00+00:00",
+        "based_on_restock_event_id": 0,
+        "business_departure_at": "2026-05-19T09:45:00+00:00",
+        "business_latest_departure_at": "2026-05-19T09:48:00+00:00",
+        "business_ping_at": "2026-05-19T09:45:00+00:00",
+        "business_recommended_departure_at": "2026-05-19T09:45:00+00:00",
+        "predicted_interval_ticks": 125,
+        "predicted_restock_at": "2026-05-19T10:36:00+00:00",
+        "prediction_method": "DEFAULT_125_TICKS"
+      },
+      "status": "PENDING",
+      "target_time": "2026-05-19T08:42:00+00:00"
+    },
+    {
+      "key": "BUSINESS_DEPARTURE_REMINDER:2026-05-19T08:31:00+00:00:2026-05-19T09:45:00+00:00",
+      "notification_type": "BUSINESS_DEPARTURE_REMINDER",
+      "prediction": {
+        "airstrip_departure_at": "2026-05-19T08:42:00+00:00",
+        "airstrip_latest_departure_at": "2026-05-19T08:45:00+00:00",
+        "airstrip_ping_at": "2026-05-19T08:42:00+00:00",
+        "airstrip_recommended_departure_at": "2026-05-19T08:42:00+00:00",
+        "based_on_restock_event_id": 0,
+        "business_departure_at": "2026-05-19T09:45:00+00:00",
+        "business_latest_departure_at": "2026-05-19T09:48:00+00:00",
+        "business_ping_at": "2026-05-19T09:45:00+00:00",
+        "business_recommended_departure_at": "2026-05-19T09:45:00+00:00",
+        "predicted_interval_ticks": 125,
+        "predicted_restock_at": "2026-05-19T10:36:00+00:00",
+        "prediction_method": "DEFAULT_125_TICKS"
+      },
+      "status": "PENDING",
+      "target_time": "2026-05-19T09:45:00+00:00"
     }
   ],
-  "recent_depleted_times": [],
+  "recent_depleted_times": [
+    "2026-05-19T08:31:00+00:00"
+  ],
   "recent_restock_times": [
     "2026-05-18T17:05:00+00:00",
     "2026-05-18T19:20:00+00:00",
