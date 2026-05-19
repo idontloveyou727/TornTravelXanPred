@@ -3,6 +3,7 @@ from pathlib import Path
 
 import monitor
 from app.config import Config
+from app.discord_webhook import discord_ts
 from app.json_state import JsonStateStore
 from app.once import run_json_once
 
@@ -38,6 +39,9 @@ def make_config(tmp_path: Path) -> Config:
         ping_lead_minutes=0,
         default_depletion_rate_per_minute=312.5,
         depletion_rate_history_window=20,
+        min_depletion_rate_sample_seconds=90,
+        depletion_rate_min_multiplier=0.25,
+        depletion_rate_max_multiplier=1.75,
         prediction_history_window=10,
         log_level="INFO",
     )
@@ -76,3 +80,32 @@ def test_json_once_prevents_duplicate_restock_notifications(monkeypatch, tmp_pat
     assert final_state["last_quantity"] == 10
     assert final_state["last_restock_normalized_at"] == "2026-05-18T11:59:00+00:00"
     assert final_state["last_notified_restock_normalized_at"] == "2026-05-18T11:59:00+00:00"
+
+
+def test_json_restock_message_predicts_next_cycle_from_current_depletion(monkeypatch, tmp_path) -> None:
+    config = make_config(tmp_path)
+    store = JsonStateStore(config.state_path)
+    state = store.load()
+    state["last_quantity"] = 0
+    state["last_observed_at"] = "2026-05-19T12:18:00+00:00"
+    state["last_estimated_depleted_at"] = "2026-05-19T10:33:00+00:00"
+    state["depletion_to_restock_interval_ticks"] = [113, 108]
+    store.save(state)
+
+    fixed_now = datetime(2026, 5, 19, 12, 24, 0, tzinfo=timezone.utc)
+    sent_messages = []
+    monkeypatch.setattr("app.once.utc_now", lambda: fixed_now)
+    monkeypatch.setattr("app.once.send_webhook", lambda _url, content: sent_messages.append(content) or (True, None))
+
+    run_json_once(config, FakeClient(quantity=2100))
+
+    final_state = store.load()
+    expected_next_restock = datetime(2026, 5, 19, 14, 20, tzinfo=timezone.utc)
+    old_anchor_prediction = datetime(2026, 5, 19, 12, 22, tzinfo=timezone.utc)
+    assert final_state["depletion_to_restock_interval_ticks"] == [113, 108, 109]
+    assert final_state["last_predicted_restock_at"] == "2026-05-19T14:20:00+00:00"
+    assert len(sent_messages) == 1
+    assert discord_ts(expected_next_restock, "F") in sent_messages[0]
+    assert discord_ts(old_anchor_prediction, "F") not in sent_messages[0]
+    assert "Projected ping time" in sent_messages[0]
+    assert final_state["pending_notifications"] == []

@@ -64,6 +64,9 @@ class Config:
     ping_lead_minutes: int
     default_depletion_rate_per_minute: float
     depletion_rate_history_window: int
+    min_depletion_rate_sample_seconds: int
+    depletion_rate_min_multiplier: float
+    depletion_rate_max_multiplier: float
     prediction_history_window: int
     log_level: str
 
@@ -82,6 +85,9 @@ class Config:
             "ping_lead_minutes": self.ping_lead_minutes,
             "default_depletion_rate_per_minute": self.default_depletion_rate_per_minute,
             "depletion_rate_history_window": self.depletion_rate_history_window,
+            "min_depletion_rate_sample_seconds": self.min_depletion_rate_sample_seconds,
+            "depletion_rate_min_multiplier": self.depletion_rate_min_multiplier,
+            "depletion_rate_max_multiplier": self.depletion_rate_max_multiplier,
             "prediction_history_window": self.prediction_history_window,
             "log_level": self.log_level,
         }
@@ -92,6 +98,10 @@ def load_config() -> Config:
     country = _get_env("COUNTRY", "TARGET_COUNTRY", "UK")
     webhook = os.getenv("DISCORD_WEBHOOK_URL") or None
     default_state_backend = "json" if os.getenv("GITHUB_ACTIONS", "").casefold() == "true" else "sqlite"
+    depletion_rate_min_multiplier = _parse_float("DEPLETION_RATE_MIN_MULTIPLIER", None, 0.25, minimum=0.0001)
+    depletion_rate_max_multiplier = _parse_float("DEPLETION_RATE_MAX_MULTIPLIER", None, 1.75, minimum=0.0001)
+    if depletion_rate_max_multiplier < depletion_rate_min_multiplier:
+        raise ValueError("DEPLETION_RATE_MAX_MULTIPLIER must be >= DEPLETION_RATE_MIN_MULTIPLIER")
     return Config(
         yata_url=_get_env("YATA_URL", "YATA_TRAVEL_EXPORT_URL", DEFAULT_YATA_URL),
         item_id=_parse_int("ITEM_ID", "TARGET_ITEM_ID", 206),
@@ -106,6 +116,9 @@ def load_config() -> Config:
         ping_lead_minutes=_parse_int("PING_LEAD_MINUTES", None, 0, minimum=0),
         default_depletion_rate_per_minute=_parse_float("DEFAULT_DEPLETION_RATE_PER_MINUTE", None, 312.5, minimum=0.0001),
         depletion_rate_history_window=_parse_int("DEPLETION_RATE_HISTORY_WINDOW", None, 20),
+        min_depletion_rate_sample_seconds=_parse_int("MIN_DEPLETION_RATE_SAMPLE_SECONDS", None, 90, minimum=0),
+        depletion_rate_min_multiplier=depletion_rate_min_multiplier,
+        depletion_rate_max_multiplier=depletion_rate_max_multiplier,
         prediction_history_window=_parse_int("PREDICTION_HISTORY_WINDOW", None, 10),
         log_level=_get_env("LOG_LEVEL", None, "INFO").upper(),
     )

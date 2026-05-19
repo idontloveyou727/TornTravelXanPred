@@ -74,12 +74,12 @@ def format_restock_detected(event: StockEvent, prediction: Prediction, predictio
             "Airstrip:",
             f"- Latest safe flight: {_format_ts_pair(prediction.airstrip_latest_departure_at)}",
             f"- Recommended departure: {_format_ts_pair(prediction.airstrip_recommended_departure_at)}",
-            f"- Ping scheduled: {_format_ts_pair(prediction.airstrip_ping_at)}",
+            f"- Projected ping time: {_format_ts_pair(prediction.airstrip_ping_at)}",
             "",
             "Business Class:",
             f"- Latest safe flight: {_format_ts_pair(prediction.business_latest_departure_at)}",
             f"- Recommended departure: {_format_ts_pair(prediction.business_recommended_departure_at)}",
-            f"- Ping scheduled: {_format_ts_pair(prediction.business_ping_at)}",
+            f"- Projected ping time: {_format_ts_pair(prediction.business_ping_at)}",
         ]
     )
 

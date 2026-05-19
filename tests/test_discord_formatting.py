@@ -40,7 +40,7 @@ def test_restock_message_includes_departure_breakdown() -> None:
 
     assert "Latest safe flight" in message
     assert "Recommended departure" in message
-    assert "Ping scheduled" in message
+    assert "Projected ping time" in message
     assert "<t:" in message
     assert ":F>" in message
     assert ":R>" in message

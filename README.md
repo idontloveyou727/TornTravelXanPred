@@ -31,6 +31,9 @@ GITHUB_ACTIONS_DELAY_BUFFER_MINUTES=5
 PING_LEAD_MINUTES=0
 DEFAULT_DEPLETION_RATE_PER_MINUTE=312.5
 DEPLETION_RATE_HISTORY_WINDOW=20
+MIN_DEPLETION_RATE_SAMPLE_SECONDS=90
+DEPLETION_RATE_MIN_MULTIPLIER=0.25
+DEPLETION_RATE_MAX_MULTIPLIER=1.75
 LOG_LEVEL=INFO
 ```
 
@@ -126,8 +129,9 @@ Departure reminder timing is designed around those delays:
 - Latest safe departure is calculated as `predicted restock - flight duration`.
 - Recommended departure is shifted earlier by `GITHUB_ACTIONS_DELAY_BUFFER_MINUTES`.
 - Ping time is `recommended departure - PING_LEAD_MINUTES`.
-- Ticks are now one minute, and prediction anchors to the estimated depleted timestamp rather than the observed restock timestamp.
-- The default stock depletion rate is `312.5` units/minute, based on a 2500-unit restock selling out in 8 minutes. The monitor updates this from clean `>0 -> >0` quantity drops and ignores `0 -> >0` and `>0 -> 0` edges for rate learning.
+- Ticks are now one minute, and reminder predictions anchor to the estimated depleted timestamp rather than the observed restock timestamp.
+- Restock detected messages project the next cycle from the current positive observation's estimated depletion time, so their departure block stays future-facing.
+- The default stock depletion rate is `312.5` units/minute, based on a 2500-unit restock selling out in 8 minutes. The monitor updates this from clean `>0 -> >0` quantity drops, ignores `0 -> >0` and `>0 -> 0` edges, requires at least `MIN_DEPLETION_RATE_SAMPLE_SECONDS`, and filters outliers before saving `depletion_rate_history`.
 
 The default GitHub delay buffer is 5 minutes, so a latest safe departure of `00:07` becomes a recommended departure of `00:02`. With `PING_LEAD_MINUTES=0`, the ping is scheduled for `00:02`. If GitHub Actions runs a few minutes late, the notification still has a chance to arrive before the latest safe departure.
 
@@ -138,6 +142,9 @@ GITHUB_ACTIONS_DELAY_BUFFER_MINUTES: "5"
 PING_LEAD_MINUTES: "0"
 DEFAULT_DEPLETION_RATE_PER_MINUTE: "312.5"
 DEPLETION_RATE_HISTORY_WINDOW: "20"
+MIN_DEPLETION_RATE_SAMPLE_SECONDS: "90"
+DEPLETION_RATE_MIN_MULTIPLIER: "0.25"
+DEPLETION_RATE_MAX_MULTIPLIER: "1.75"
 ```
 
 Suggested tuning:
