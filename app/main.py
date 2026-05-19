@@ -40,7 +40,13 @@ def run_forever() -> None:
             except Exception:
                 LOGGER.exception("Monitor loop failed; will retry on next poll")
                 try:
-                    process_due_notifications(db, config.discord_webhook_url, config.ping_lead_minutes)
+                    process_due_notifications(
+                        db,
+                        config.discord_webhook_url,
+                        config.ping_lead_minutes,
+                        enable_airstrip_pings=config.enable_airstrip_pings,
+                        enable_business_class_pings=config.enable_business_class_pings,
+                    )
                 except Exception:
                     LOGGER.exception("Failed to process due notifications after monitor loop error")
 
@@ -98,11 +104,25 @@ def run_sqlite_cycle(config, db: Database, client: YataClient) -> None:
                 prediction.predicted_interval_ticks,
                 prediction.prediction_method,
             )
-            create_notifications_for_restock(db, event_id=event_id, prediction_id=prediction_id, prediction=prediction, now=utc_now())
+            create_notifications_for_restock(
+                db,
+                event_id=event_id,
+                prediction_id=prediction_id,
+                prediction=prediction,
+                now=utc_now(),
+                enable_airstrip_pings=config.enable_airstrip_pings,
+                enable_business_class_pings=config.enable_business_class_pings,
+            )
     else:
         LOGGER.info("No stock event detected; quantity unchanged at %s", observation.quantity)
 
-    process_due_notifications(db, config.discord_webhook_url, config.ping_lead_minutes)
+    process_due_notifications(
+        db,
+        config.discord_webhook_url,
+        config.ping_lead_minutes,
+        enable_airstrip_pings=config.enable_airstrip_pings,
+        enable_business_class_pings=config.enable_business_class_pings,
+    )
 
 
 def _install_signal_handlers(stop_event: threading.Event) -> None:

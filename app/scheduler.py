@@ -26,6 +26,8 @@ def create_notifications_for_restock(
     prediction_id: int,
     prediction: Prediction,
     now: datetime,
+    enable_airstrip_pings: bool = True,
+    enable_business_class_pings: bool = True,
 ) -> None:
     db.create_notification_once(
         notification_type=RESTOCK_DETECTED,
@@ -33,30 +35,54 @@ def create_notifications_for_restock(
         related_prediction_id=prediction_id,
         target_time=now,
     )
-    _create_departure_notification(
-        db,
-        notification_type=AIRSTRIP_DEPARTURE_REMINDER,
-        event_id=event_id,
-        prediction_id=prediction_id,
-        target_time=prediction.airstrip_ping_at,
-        now=now,
-    )
-    _create_departure_notification(
-        db,
-        notification_type=BUSINESS_DEPARTURE_REMINDER,
-        event_id=event_id,
-        prediction_id=prediction_id,
-        target_time=prediction.business_ping_at,
-        now=now,
-    )
+    if enable_airstrip_pings:
+        _create_departure_notification(
+            db,
+            notification_type=AIRSTRIP_DEPARTURE_REMINDER,
+            event_id=event_id,
+            prediction_id=prediction_id,
+            target_time=prediction.airstrip_ping_at,
+            now=now,
+        )
+    if enable_business_class_pings:
+        _create_departure_notification(
+            db,
+            notification_type=BUSINESS_DEPARTURE_REMINDER,
+            event_id=event_id,
+            prediction_id=prediction_id,
+            target_time=prediction.business_ping_at,
+            now=now,
+        )
 
 
-def process_due_notifications(db: Database, webhook_url: str | None, ping_lead_minutes: int = 0) -> None:
+def process_due_notifications(
+    db: Database,
+    webhook_url: str | None,
+    ping_lead_minutes: int = 0,
+    *,
+    enable_airstrip_pings: bool = True,
+    enable_business_class_pings: bool = True,
+) -> None:
     for row in db.due_notifications(utc_now()):
         notification_id = int(row["id"])
         notification_type = str(row["notification_type"])
+        if _notification_disabled(
+            notification_type,
+            enable_airstrip_pings=enable_airstrip_pings,
+            enable_business_class_pings=enable_business_class_pings,
+        ):
+            db.mark_notification(notification_id, "SKIPPED", "Departure reminder type disabled by configuration")
+            LOGGER.info("Skipped disabled departure reminder id=%s type=%s", notification_id, notification_type)
+            continue
         try:
-            content = _format_notification(db, notification_type, row, ping_lead_minutes)
+            content = _format_notification(
+                db,
+                notification_type,
+                row,
+                ping_lead_minutes,
+                enable_airstrip_pings=enable_airstrip_pings,
+                enable_business_class_pings=enable_business_class_pings,
+            )
             ok, error = send_webhook(webhook_url, content)
             db.mark_notification(notification_id, "SENT" if ok else "FAILED", error)
         except Exception as exc:
@@ -93,7 +119,28 @@ def _create_departure_notification(
     )
 
 
-def _format_notification(db: Database, notification_type: str, row, ping_lead_minutes: int = 0) -> str:
+def _notification_disabled(
+    notification_type: str,
+    *,
+    enable_airstrip_pings: bool,
+    enable_business_class_pings: bool,
+) -> bool:
+    if notification_type == AIRSTRIP_DEPARTURE_REMINDER:
+        return not enable_airstrip_pings
+    if notification_type == BUSINESS_DEPARTURE_REMINDER:
+        return not enable_business_class_pings
+    return False
+
+
+def _format_notification(
+    db: Database,
+    notification_type: str,
+    row,
+    ping_lead_minutes: int = 0,
+    *,
+    enable_airstrip_pings: bool = True,
+    enable_business_class_pings: bool = True,
+) -> str:
     prediction_id = int(row["related_prediction_id"])
     event_id = int(row["related_restock_event_id"]) if row["related_restock_event_id"] is not None else None
     prediction = db.get_prediction(prediction_id)
@@ -102,7 +149,13 @@ def _format_notification(db: Database, notification_type: str, row, ping_lead_mi
         if event_id is None:
             raise ValueError("Restock notification missing related event id")
         event = db.get_event(event_id)
-        return format_restock_detected(event, prediction, prediction_id)
+        return format_restock_detected(
+            event,
+            prediction,
+            prediction_id,
+            include_airstrip=enable_airstrip_pings,
+            include_business=enable_business_class_pings,
+        )
     if notification_type == AIRSTRIP_DEPARTURE_REMINDER:
         return format_airstrip_reminder(prediction, ping_lead_minutes)
     if notification_type == BUSINESS_DEPARTURE_REMINDER:

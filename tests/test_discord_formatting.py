@@ -44,3 +44,34 @@ def test_restock_message_includes_departure_breakdown() -> None:
     assert "<t:" in message
     assert ":F>" in message
     assert ":R>" in message
+
+
+def test_restock_message_can_limit_departure_breakdown_without_changing_enabled_content() -> None:
+    event = StockEvent(
+        event_type="RESTOCK",
+        item_id=206,
+        country="UK",
+        observed_at=datetime(2026, 1, 1, 12, 7, 12, tzinfo=timezone.utc),
+        normalized_at=datetime(2026, 1, 1, 12, 5, tzinfo=timezone.utc),
+        previous_quantity=0,
+        current_quantity=10,
+        source_delay_seconds=132,
+    )
+    prediction = Prediction(
+        based_on_restock_event_id=1,
+        predicted_restock_at=datetime(2026, 1, 1, 14, 10, tzinfo=timezone.utc),
+        predicted_interval_ticks=25,
+        prediction_method="DEFAULT_125_TICKS",
+        airstrip_departure_at=datetime(2026, 1, 1, 12, 14, tzinfo=timezone.utc),
+        business_departure_at=datetime(2026, 1, 1, 13, 17, tzinfo=timezone.utc),
+        airstrip_latest_departure_at=datetime(2026, 1, 1, 12, 19, tzinfo=timezone.utc),
+        business_latest_departure_at=datetime(2026, 1, 1, 13, 22, tzinfo=timezone.utc),
+        airstrip_ping_at=datetime(2026, 1, 1, 12, 14, tzinfo=timezone.utc),
+        business_ping_at=datetime(2026, 1, 1, 13, 17, tzinfo=timezone.utc),
+    )
+
+    full_message = format_restock_detected(event, prediction, prediction_id=1)
+    airstrip_only = format_restock_detected(event, prediction, prediction_id=1, include_business=False)
+
+    assert "Business Class:" not in airstrip_only
+    assert full_message.split("\n\nBusiness Class:")[0] == airstrip_only

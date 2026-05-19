@@ -32,6 +32,15 @@ def _parse_int(name: str, fallback_name: str | None, default: int, minimum: int 
     return value
 
 
+def _parse_bool(name: str, fallback_name: str | None, default: bool) -> bool:
+    raw = _get_env(name, fallback_name, "1" if default else "0").strip().casefold()
+    if raw in {"1", "true", "yes", "on"}:
+        return True
+    if raw in {"0", "false", "no", "off"}:
+        return False
+    raise ValueError(f"{name} must be a boolean-like value, got {raw!r}")
+
+
 def _parse_aliases(country: str) -> tuple[str, ...]:
     raw = os.getenv("TARGET_COUNTRY_ALIASES", "")
     values = [part.strip() for part in raw.split(",") if part.strip()]
@@ -62,6 +71,8 @@ class Config:
     state_path: Path
     github_actions_delay_buffer_minutes: int
     ping_lead_minutes: int
+    enable_airstrip_pings: bool
+    enable_business_class_pings: bool
     default_depletion_rate_per_minute: float
     depletion_rate_history_window: int
     min_depletion_rate_sample_seconds: int
@@ -83,6 +94,8 @@ class Config:
             "state_path": str(self.state_path),
             "github_actions_delay_buffer_minutes": self.github_actions_delay_buffer_minutes,
             "ping_lead_minutes": self.ping_lead_minutes,
+            "enable_airstrip_pings": self.enable_airstrip_pings,
+            "enable_business_class_pings": self.enable_business_class_pings,
             "default_depletion_rate_per_minute": self.default_depletion_rate_per_minute,
             "depletion_rate_history_window": self.depletion_rate_history_window,
             "min_depletion_rate_sample_seconds": self.min_depletion_rate_sample_seconds,
@@ -114,6 +127,8 @@ def load_config() -> Config:
         state_path=Path(_get_env("STATE_PATH", None, "./data/github_actions_state.json")),
         github_actions_delay_buffer_minutes=_parse_int("GITHUB_ACTIONS_DELAY_BUFFER_MINUTES", None, 5, minimum=0),
         ping_lead_minutes=_parse_int("PING_LEAD_MINUTES", None, 0, minimum=0),
+        enable_airstrip_pings=_parse_bool("ENABLE_AIRSTRIP_PINGS", None, True),
+        enable_business_class_pings=_parse_bool("ENABLE_BUSINESS_CLASS_PINGS", None, True),
         default_depletion_rate_per_minute=_parse_float("DEFAULT_DEPLETION_RATE_PER_MINUTE", None, 312.5, minimum=0.0001),
         depletion_rate_history_window=_parse_int("DEPLETION_RATE_HISTORY_WINDOW", None, 20),
         min_depletion_rate_sample_seconds=_parse_int("MIN_DEPLETION_RATE_SAMPLE_SECONDS", None, 90, minimum=0),

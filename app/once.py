@@ -192,7 +192,13 @@ def _handle_json_restock(config: Config, state: dict, event, observation) -> Non
     state["last_predicted_restock_at"] = encode_dt(prediction.predicted_restock_at)
 
     if state.get("last_notified_restock_normalized_at") != normalized_key:
-        content = format_restock_detected(event, prediction, prediction_id=0)
+        content = format_restock_detected(
+            event,
+            prediction,
+            prediction_id=0,
+            include_airstrip=config.enable_airstrip_pings,
+            include_business=config.enable_business_class_pings,
+        )
         ok, error = send_webhook(config.discord_webhook_url, content)
         if ok:
             state["last_notified_restock_normalized_at"] = normalized_key
@@ -241,10 +247,11 @@ def _handle_json_depletion(config: Config, state: dict, previous) -> None:
 
 
 def _schedule_json_departure_reminders(config: Config, state: dict, prediction, *, restock_key: str, now) -> None:
-    reminders = [
-        (AIRSTRIP_DEPARTURE_REMINDER, prediction.airstrip_ping_at),
-        (BUSINESS_DEPARTURE_REMINDER, prediction.business_ping_at),
-    ]
+    reminders = []
+    if config.enable_airstrip_pings:
+        reminders.append((AIRSTRIP_DEPARTURE_REMINDER, prediction.airstrip_ping_at))
+    if config.enable_business_class_pings:
+        reminders.append((BUSINESS_DEPARTURE_REMINDER, prediction.business_ping_at))
     for notification_type, target_time in reminders:
         key = f"{notification_type}:{restock_key}:{encode_dt(target_time)}"
         if target_time <= now:
@@ -272,6 +279,12 @@ def process_json_due_notifications(config: Config, state: dict, *, now) -> None:
                 continue
             prediction = prediction_from_json(notification["prediction"])
             notification_type = str(notification["notification_type"])
+            if _json_notification_disabled(config, notification_type):
+                notification["status"] = "SKIPPED"
+                notification["sent_at"] = None
+                notification["error_message"] = "Departure reminder type disabled by configuration"
+                mark_notification_sent(state, str(notification["key"]))
+                continue
             if notification_type == AIRSTRIP_DEPARTURE_REMINDER:
                 content = format_airstrip_reminder(prediction, config.ping_lead_minutes)
             elif notification_type == BUSINESS_DEPARTURE_REMINDER:
@@ -291,3 +304,11 @@ def process_json_due_notifications(config: Config, state: dict, *, now) -> None:
             LOGGER.exception("Failed to process JSON notification key=%s", notification.get("key"))
             notification["status"] = "FAILED"
             notification["error_message"] = str(exc)
+
+
+def _json_notification_disabled(config: Config, notification_type: str) -> bool:
+    if notification_type == AIRSTRIP_DEPARTURE_REMINDER:
+        return not config.enable_airstrip_pings
+    if notification_type == BUSINESS_DEPARTURE_REMINDER:
+        return not config.enable_business_class_pings
+    return False

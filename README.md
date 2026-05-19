@@ -29,6 +29,8 @@ DATABASE_PATH=./data/restock_tracker.sqlite3
 PREDICTION_HISTORY_WINDOW=10
 GITHUB_ACTIONS_DELAY_BUFFER_MINUTES=5
 PING_LEAD_MINUTES=0
+ENABLE_AIRSTRIP_PINGS=1
+ENABLE_BUSINESS_CLASS_PINGS=1
 DEFAULT_DEPLETION_RATE_PER_MINUTE=312.5
 DEPLETION_RATE_HISTORY_WINDOW=20
 MIN_DEPLETION_RATE_SAMPLE_SECONDS=90
@@ -129,6 +131,7 @@ Departure reminder timing is designed around those delays:
 - Latest safe departure is calculated as `predicted restock - flight duration`.
 - Recommended departure is shifted earlier by `GITHUB_ACTIONS_DELAY_BUFFER_MINUTES`.
 - Ping time is `recommended departure - PING_LEAD_MINUTES`.
+- Airstrip and Business Class departure pings can be enabled independently with `ENABLE_AIRSTRIP_PINGS` and `ENABLE_BUSINESS_CLASS_PINGS`.
 - Ticks are now one minute, and reminder predictions anchor to the estimated depleted timestamp rather than the observed restock timestamp.
 - Restock detected messages project the next cycle from the current positive observation's estimated depletion time, so their departure block stays future-facing.
 - The default stock depletion rate is `312.5` units/minute, based on a 2500-unit restock selling out in 8 minutes. The monitor updates this from clean `>0 -> >0` quantity drops, ignores `0 -> >0` and `>0 -> 0` edges, requires at least `MIN_DEPLETION_RATE_SAMPLE_SECONDS`, and filters outliers before saving `depletion_rate_history`.
@@ -140,6 +143,8 @@ Workflow env example:
 ```yaml
 GITHUB_ACTIONS_DELAY_BUFFER_MINUTES: "5"
 PING_LEAD_MINUTES: "0"
+ENABLE_AIRSTRIP_PINGS: "1"
+ENABLE_BUSINESS_CLASS_PINGS: "1"
 DEFAULT_DEPLETION_RATE_PER_MINUTE: "312.5"
 DEPLETION_RATE_HISTORY_WINDOW: "20"
 MIN_DEPLETION_RATE_SAMPLE_SECONDS: "90"

@@ -57,31 +57,49 @@ def send_webhook(url: str | None, content: str, *, max_attempts: int = 3) -> tup
     return False, "Discord webhook send exhausted retries"
 
 
-def format_restock_detected(event: StockEvent, prediction: Prediction, prediction_id: int) -> str:
-    return "\n".join(
-        [
-            "UK Item 206 Restock Detected",
-            "",
-            f"Observed at: {_format_ts_pair(event.observed_at)}",
-            f"Normalized restock tick: {_format_ts_pair(event.normalized_at) if event.normalized_at else 'unknown'}",
-            f"Quantity: {event.current_quantity}",
-            "",
-            f"Next predicted restock: {_format_ts_pair(prediction.predicted_restock_at)}",
-            f"Prediction interval: {prediction.predicted_interval_ticks} ticks",
-            f"Prediction ID: {prediction_id}",
-            "",
-            "Recommended departures:",
-            "Airstrip:",
-            f"- Latest safe flight: {_format_ts_pair(prediction.airstrip_latest_departure_at)}",
-            f"- Recommended departure: {_format_ts_pair(prediction.airstrip_recommended_departure_at)}",
-            f"- Projected ping time: {_format_ts_pair(prediction.airstrip_ping_at)}",
-            "",
-            "Business Class:",
-            f"- Latest safe flight: {_format_ts_pair(prediction.business_latest_departure_at)}",
-            f"- Recommended departure: {_format_ts_pair(prediction.business_recommended_departure_at)}",
-            f"- Projected ping time: {_format_ts_pair(prediction.business_ping_at)}",
-        ]
-    )
+def format_restock_detected(
+    event: StockEvent,
+    prediction: Prediction,
+    prediction_id: int,
+    *,
+    include_airstrip: bool = True,
+    include_business: bool = True,
+) -> str:
+    lines = [
+        "UK Item 206 Restock Detected",
+        "",
+        f"Observed at: {_format_ts_pair(event.observed_at)}",
+        f"Normalized restock tick: {_format_ts_pair(event.normalized_at) if event.normalized_at else 'unknown'}",
+        f"Quantity: {event.current_quantity}",
+        "",
+        f"Next predicted restock: {_format_ts_pair(prediction.predicted_restock_at)}",
+        f"Prediction interval: {prediction.predicted_interval_ticks} ticks",
+        f"Prediction ID: {prediction_id}",
+    ]
+    departure_lines: list[str] = []
+    if include_airstrip:
+        departure_lines.extend(
+            [
+                "Airstrip:",
+                f"- Latest safe flight: {_format_ts_pair(prediction.airstrip_latest_departure_at)}",
+                f"- Recommended departure: {_format_ts_pair(prediction.airstrip_recommended_departure_at)}",
+                f"- Projected ping time: {_format_ts_pair(prediction.airstrip_ping_at)}",
+            ]
+        )
+    if include_business:
+        if departure_lines:
+            departure_lines.append("")
+        departure_lines.extend(
+            [
+                "Business Class:",
+                f"- Latest safe flight: {_format_ts_pair(prediction.business_latest_departure_at)}",
+                f"- Recommended departure: {_format_ts_pair(prediction.business_recommended_departure_at)}",
+                f"- Projected ping time: {_format_ts_pair(prediction.business_ping_at)}",
+            ]
+        )
+    if departure_lines:
+        lines.extend(["", "Recommended departures:", *departure_lines])
+    return "\n".join(lines)
 
 
 def format_airstrip_reminder(prediction: Prediction, ping_lead_minutes: int = 0) -> str:

@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from dataclasses import replace
 from pathlib import Path
 
 import monitor
@@ -37,6 +38,8 @@ def make_config(tmp_path: Path) -> Config:
         state_path=tmp_path / "state.json",
         github_actions_delay_buffer_minutes=5,
         ping_lead_minutes=0,
+        enable_airstrip_pings=True,
+        enable_business_class_pings=True,
         default_depletion_rate_per_minute=312.5,
         depletion_rate_history_window=20,
         min_depletion_rate_sample_seconds=90,
@@ -109,3 +112,28 @@ def test_json_restock_message_predicts_next_cycle_from_current_depletion(monkeyp
     assert discord_ts(old_anchor_prediction, "F") not in sent_messages[0]
     assert "Projected ping time" in sent_messages[0]
     assert final_state["pending_notifications"] == []
+
+
+def test_json_depletion_schedules_only_enabled_departure_pings(monkeypatch, tmp_path) -> None:
+    config = replace(make_config(tmp_path), enable_business_class_pings=False)
+    store = JsonStateStore(config.state_path)
+    state = store.load()
+    state["last_quantity"] = 100
+    state["last_observed_at"] = "2026-05-19T12:18:00+00:00"
+    state["last_positive_observation"] = {
+        "observed_at": "2026-05-19T12:18:00+00:00",
+        "item_id": 206,
+        "country": "UK",
+        "quantity": 100,
+    }
+    store.save(state)
+
+    fixed_now = datetime(2026, 5, 19, 12, 20, 0, tzinfo=timezone.utc)
+    monkeypatch.setattr("app.once.utc_now", lambda: fixed_now)
+    monkeypatch.setattr("app.once.send_webhook", lambda _url, _content: (True, None))
+
+    run_json_once(config, FakeClient(quantity=0))
+
+    final_state = store.load()
+    assert len(final_state["pending_notifications"]) == 1
+    assert final_state["pending_notifications"][0]["notification_type"] == "AIRSTRIP_DEPARTURE_REMINDER"
