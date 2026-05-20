@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from statistics import median
+from typing import Any
 
 from app.models import StockObservation
 from app.tick import ceil_to_1_minute_tick, floor_to_1_minute_tick
@@ -14,6 +15,11 @@ DEPLETION_RATE_MIN_MULTIPLIER = 0.25
 DEPLETION_RATE_MAX_MULTIPLIER = 1.75
 MAD_OUTLIER_THRESHOLD = 3.5
 MIN_MAD_HISTORY_ITEMS = 5
+MIN_STABLE_DEPLETION_RATE_SAMPLES = 3
+LOW_TRAFFIC = "LOW_TRAFFIC"
+MID_TRAFFIC = "MID_TRAFFIC"
+HIGH_TRAFFIC = "HIGH_TRAFFIC"
+DEPLETION_RATE_BUCKETS = (LOW_TRAFFIC, MID_TRAFFIC, HIGH_TRAFFIC)
 
 
 @dataclass(frozen=True)
@@ -22,6 +28,44 @@ class DepletionEstimate:
     rate_per_minute: float
     source_quantity: int
     source_observed_at: datetime
+
+
+def depletion_bucket_for_tct_time(dt: datetime) -> str:
+    hour = dt.astimezone(timezone.utc).hour if dt.tzinfo else dt.hour
+    if hour < 8:
+        return LOW_TRAFFIC
+    if hour < 16:
+        return MID_TRAFFIC
+    return HIGH_TRAFFIC
+
+
+def empty_depletion_rate_history() -> dict[str, list[float]]:
+    return {bucket: [] for bucket in DEPLETION_RATE_BUCKETS}
+
+
+def normalize_depletion_rate_history(
+    history: Any,
+    *,
+    max_items: int | None = None,
+) -> dict[str, list[float]]:
+    normalized = empty_depletion_rate_history()
+    if not isinstance(history, dict):
+        return normalized
+
+    for bucket in DEPLETION_RATE_BUCKETS:
+        raw_values = history.get(bucket, [])
+        if not isinstance(raw_values, list):
+            continue
+        values: list[float] = []
+        for value in raw_values:
+            try:
+                parsed = float(value)
+            except (TypeError, ValueError):
+                continue
+            if parsed > 0:
+                values.append(parsed)
+        normalized[bucket] = values[-max_items:] if max_items is not None else values
+    return normalized
 
 
 def calculate_depletion_rate_per_minute(
@@ -79,8 +123,23 @@ def stable_depletion_rate(
     min_multiplier: float = DEPLETION_RATE_MIN_MULTIPLIER,
     max_multiplier: float = DEPLETION_RATE_MAX_MULTIPLIER,
 ) -> float:
+    if default_rate <= 0:
+        default_rate = DEFAULT_DEPLETION_RATE_PER_MINUTE
+
+    valid_history: list[float] = []
+    for value in history:
+        try:
+            parsed = float(value)
+        except (TypeError, ValueError):
+            continue
+        if parsed > 0:
+            valid_history.append(parsed)
+
+    if len(valid_history) < MIN_STABLE_DEPLETION_RATE_SAMPLES:
+        return default_rate
+
     filtered = filter_depletion_rate_history(
-        history,
+        valid_history,
         default_rate=default_rate,
         min_multiplier=min_multiplier,
         max_multiplier=max_multiplier,

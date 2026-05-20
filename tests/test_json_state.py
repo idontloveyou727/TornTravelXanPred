@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 
+from app.depletion import HIGH_TRAFFIC, LOW_TRAFFIC, MID_TRAFFIC
 from app.json_state import JsonStateStore, prediction_from_json, prediction_to_json
 from app.models import Prediction
 
@@ -11,6 +12,11 @@ def test_json_state_load_save(tmp_path) -> None:
     state = store.load()
     assert state["last_quantity"] is None
     assert state["recent_restock_times"] == []
+    assert state["depletion_rate_history"] == {
+        LOW_TRAFFIC: [],
+        MID_TRAFFIC: [],
+        HIGH_TRAFFIC: [],
+    }
 
     state["last_quantity"] = 5
     state["last_observed_at"] = datetime(2026, 5, 18, 12, 0, tzinfo=timezone.utc).isoformat()
@@ -20,6 +26,24 @@ def test_json_state_load_save(tmp_path) -> None:
     assert loaded["last_quantity"] == 5
     assert loaded["last_observed_at"] == "2026-05-18T12:00:00+00:00"
     assert loaded["pending_notifications"] == []
+
+
+def test_json_state_load_resets_legacy_flat_depletion_rate_history(tmp_path) -> None:
+    path = tmp_path / "state.json"
+    path.write_text(
+        '{"depletion_rate_history": [250, 260], "depletion_rate_per_minute": 260, "current_cycle_depletion_rate_samples": [240]}',
+        encoding="utf-8",
+    )
+
+    loaded = JsonStateStore(path).load()
+
+    assert loaded["depletion_rate_history"] == {
+        LOW_TRAFFIC: [],
+        MID_TRAFFIC: [],
+        HIGH_TRAFFIC: [],
+    }
+    assert loaded["depletion_rate_per_minute"] == 265
+    assert loaded["current_cycle_depletion_rate_samples"] == [240.0]
 
 
 def test_prediction_json_preserves_latest_departure_fields() -> None:

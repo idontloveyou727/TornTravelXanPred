@@ -4,9 +4,10 @@ from pathlib import Path
 
 import monitor
 from app.config import Config
+from app.depletion import HIGH_TRAFFIC, LOW_TRAFFIC, MID_TRAFFIC
 from app.discord_webhook import discord_ts
 from app.json_state import JsonStateStore
-from app.once import _schedule_json_departure_reminders, process_json_due_notifications, run_json_once
+from app.once import _effective_depletion_rate, _schedule_json_departure_reminders, process_json_due_notifications, run_json_once
 from app.predictor import METHOD_DEFAULT, build_prediction
 
 
@@ -138,6 +139,73 @@ def test_json_depletion_schedules_only_enabled_departure_pings(monkeypatch, tmp_
     final_state = store.load()
     assert len(final_state["pending_notifications"]) == 1
     assert final_state["pending_notifications"][0]["notification_type"] == "AIRSTRIP_DEPARTURE_REMINDER"
+
+
+def test_json_depletion_commits_pending_drpm_samples_to_restock_bucket(monkeypatch, tmp_path) -> None:
+    config = replace(make_config(tmp_path), enable_airstrip_pings=False, enable_business_class_pings=False)
+    store = JsonStateStore(config.state_path)
+    state = store.load()
+    state["last_quantity"] = 1000
+    state["last_observed_at"] = "2026-05-19T10:00:00+00:00"
+    state["last_restock_normalized_at"] = "2026-05-19T17:00:00+00:00"
+    state["last_positive_observation"] = {
+        "observed_at": "2026-05-19T10:00:00+00:00",
+        "item_id": 206,
+        "country": "UK",
+        "quantity": 1000,
+    }
+    store.save(state)
+
+    times = iter(
+        [
+            datetime(2026, 5, 19, 10, 2, 0, tzinfo=timezone.utc),
+            datetime(2026, 5, 19, 10, 2, 0, tzinfo=timezone.utc),
+            datetime(2026, 5, 19, 10, 2, 0, tzinfo=timezone.utc),
+            datetime(2026, 5, 19, 10, 4, 0, tzinfo=timezone.utc),
+            datetime(2026, 5, 19, 10, 4, 0, tzinfo=timezone.utc),
+            datetime(2026, 5, 19, 10, 4, 0, tzinfo=timezone.utc),
+        ]
+    )
+    monkeypatch.setattr("app.once.utc_now", lambda: next(times))
+    monkeypatch.setattr("app.once.send_webhook", lambda _url, _content: (True, None))
+
+    run_json_once(config, FakeClient(quantity=800))
+    after_drop = store.load()
+    assert after_drop["current_cycle_depletion_rate_samples"] == [100.0]
+    assert after_drop["depletion_rate_history"][HIGH_TRAFFIC] == []
+
+    run_json_once(config, FakeClient(quantity=0))
+
+    final_state = store.load()
+    assert final_state["current_cycle_depletion_rate_samples"] == []
+    assert final_state["depletion_rate_history"][HIGH_TRAFFIC] == [100.0]
+    assert final_state["depletion_rate_history"][LOW_TRAFFIC] == []
+    assert final_state["depletion_rate_history"][MID_TRAFFIC] == []
+
+
+def test_effective_depletion_rate_uses_observation_time_bucket(tmp_path) -> None:
+    config = make_config(tmp_path)
+    state = JsonStateStore(config.state_path).load()
+    state["depletion_rate_history"] = {
+        LOW_TRAFFIC: [300, 310, 320],
+        MID_TRAFFIC: [240, 250, 260],
+        HIGH_TRAFFIC: [400, 410, 420],
+    }
+
+    assert _effective_depletion_rate(config, state, datetime(2026, 1, 1, 9, 0, tzinfo=timezone.utc)) == 250
+    assert _effective_depletion_rate(config, state, datetime(2026, 1, 1, 17, 0, tzinfo=timezone.utc)) == 410
+
+
+def test_effective_depletion_rate_empty_active_bucket_falls_back_to_default(tmp_path) -> None:
+    config = make_config(tmp_path)
+    state = JsonStateStore(config.state_path).load()
+    state["depletion_rate_history"] = {
+        LOW_TRAFFIC: [300, 310, 320],
+        MID_TRAFFIC: [],
+        HIGH_TRAFFIC: [400, 410, 420],
+    }
+
+    assert _effective_depletion_rate(config, state, datetime(2026, 1, 1, 9, 0, tzinfo=timezone.utc)) == 265
 
 
 def test_json_late_departure_ping_sends_when_latest_safe_is_still_future(monkeypatch, tmp_path) -> None:

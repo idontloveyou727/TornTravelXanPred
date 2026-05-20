@@ -1,11 +1,17 @@
 from datetime import datetime, timezone
 
 from app.depletion import (
+    DEFAULT_DEPLETION_RATE_PER_MINUTE,
+    HIGH_TRAFFIC,
+    LOW_TRAFFIC,
+    MID_TRAFFIC,
     calculate_exact_restock_time,
     calculate_depletion_rate_per_minute,
+    depletion_bucket_for_tct_time,
     estimate_depleted_time_from_last_positive,
     estimate_restock_time_from_observation,
     filter_depletion_rate_history,
+    normalize_depletion_rate_history,
     stable_depletion_rate,
 )
 from app.models import StockObservation
@@ -29,6 +35,33 @@ def test_depletion_rate_uses_only_positive_to_positive_drop() -> None:
 
 def test_depletion_rate_ignores_too_short_samples() -> None:
     assert calculate_depletion_rate_per_minute(obs(0, 0, 0, 1982), obs(0, 1, 0, 1772)) is None
+
+
+def test_depletion_bucket_for_tct_time_boundaries() -> None:
+    assert depletion_bucket_for_tct_time(obs(0, 0, 0, 1).observed_at) == LOW_TRAFFIC
+    assert depletion_bucket_for_tct_time(obs(7, 59, 0, 1).observed_at) == LOW_TRAFFIC
+    assert depletion_bucket_for_tct_time(obs(8, 0, 0, 1).observed_at) == MID_TRAFFIC
+    assert depletion_bucket_for_tct_time(obs(15, 59, 0, 1).observed_at) == MID_TRAFFIC
+    assert depletion_bucket_for_tct_time(obs(16, 0, 0, 1).observed_at) == HIGH_TRAFFIC
+    assert depletion_bucket_for_tct_time(obs(23, 59, 0, 1).observed_at) == HIGH_TRAFFIC
+
+
+def test_normalize_depletion_rate_history_resets_legacy_flat_history() -> None:
+    assert normalize_depletion_rate_history([250, 260]) == {
+        LOW_TRAFFIC: [],
+        MID_TRAFFIC: [],
+        HIGH_TRAFFIC: [],
+    }
+
+
+def test_stable_depletion_rate_uses_default_during_cold_start() -> None:
+    assert stable_depletion_rate([], default_rate=265) == DEFAULT_DEPLETION_RATE_PER_MINUTE
+    assert stable_depletion_rate([250], default_rate=265) == DEFAULT_DEPLETION_RATE_PER_MINUTE
+    assert stable_depletion_rate([250, 260], default_rate=265) == DEFAULT_DEPLETION_RATE_PER_MINUTE
+
+
+def test_stable_depletion_rate_uses_filtered_median_after_cold_start() -> None:
+    assert stable_depletion_rate([250, 260, 270], default_rate=265) == 260
 
 
 def test_calculate_exact_restock_time_uses_observed_quantity_and_drpm() -> None:

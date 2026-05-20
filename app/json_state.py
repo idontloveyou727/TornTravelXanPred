@@ -7,6 +7,12 @@ from pathlib import Path
 from typing import Any
 
 from app.db import decode_dt, encode_dt
+from app.depletion import (
+    DEFAULT_DEPLETION_RATE_PER_MINUTE,
+    MID_TRAFFIC,
+    empty_depletion_rate_history,
+    normalize_depletion_rate_history,
+)
 from app.models import Prediction, StockObservation
 
 DEFAULT_STATE: dict[str, Any] = {
@@ -20,7 +26,8 @@ DEFAULT_STATE: dict[str, Any] = {
     "recent_restock_times": [],
     "recent_depleted_times": [],
     "depletion_rate_per_minute": None,
-    "depletion_rate_history": [],
+    "depletion_rate_history": empty_depletion_rate_history(),
+    "current_cycle_depletion_rate_samples": [],
     "depletion_to_restock_interval_ticks": [],
     "last_positive_observation": None,
     "pending_notifications": [],
@@ -40,6 +47,7 @@ class JsonStateStore:
         state = deepcopy(DEFAULT_STATE)
         if isinstance(loaded, dict):
             state.update(loaded)
+        normalize_json_state(state)
         return state
 
     def save(self, state: dict[str, Any]) -> None:
@@ -112,10 +120,78 @@ def add_recent_depleted_time(state: dict[str, Any], depleted_at: datetime, *, ma
 def add_depletion_rate(state: dict[str, Any], rate_per_minute: float, *, max_items: int) -> None:
     if rate_per_minute <= 0:
         return
-    values = [float(value) for value in state.get("depletion_rate_history", []) if float(value) > 0]
-    values.append(float(rate_per_minute))
-    state["depletion_rate_history"] = values[-max_items:]
+    add_depletion_rates_to_bucket(
+        state,
+        MID_TRAFFIC,
+        [rate_per_minute],
+        max_items=max_items,
+    )
     state["depletion_rate_per_minute"] = float(rate_per_minute)
+
+
+def normalize_json_state(state: dict[str, Any], *, max_history_items: int | None = None) -> None:
+    legacy_flat_history = not isinstance(state.get("depletion_rate_history"), dict)
+    state["depletion_rate_history"] = normalize_depletion_rate_history(
+        state.get("depletion_rate_history"),
+        max_items=max_history_items,
+    )
+    if legacy_flat_history:
+        state["depletion_rate_per_minute"] = DEFAULT_DEPLETION_RATE_PER_MINUTE
+    state["current_cycle_depletion_rate_samples"] = _positive_float_values(
+        state.get("current_cycle_depletion_rate_samples", [])
+    )
+
+
+def depletion_rate_history_for_bucket(state: dict[str, Any], bucket: str) -> list[float]:
+    history = normalize_depletion_rate_history(state.get("depletion_rate_history"))
+    state["depletion_rate_history"] = history
+    return list(history.get(bucket, []))
+
+
+def add_pending_depletion_rate_sample(state: dict[str, Any], rate_per_minute: float, *, max_items: int) -> None:
+    if rate_per_minute <= 0:
+        return
+    values = _positive_float_values(state.get("current_cycle_depletion_rate_samples", []))
+    values.append(float(rate_per_minute))
+    state["current_cycle_depletion_rate_samples"] = values[-max_items:]
+
+
+def current_cycle_depletion_rate_samples(state: dict[str, Any]) -> list[float]:
+    values = _positive_float_values(state.get("current_cycle_depletion_rate_samples", []))
+    state["current_cycle_depletion_rate_samples"] = values
+    return list(values)
+
+
+def clear_current_cycle_depletion_rate_samples(state: dict[str, Any]) -> None:
+    state["current_cycle_depletion_rate_samples"] = []
+
+
+def add_depletion_rates_to_bucket(
+    state: dict[str, Any],
+    bucket: str,
+    rates_per_minute: list[float],
+    *,
+    max_items: int,
+) -> None:
+    history = normalize_depletion_rate_history(state.get("depletion_rate_history"))
+    values = list(history.get(bucket, []))
+    values.extend(_positive_float_values(rates_per_minute))
+    history[bucket] = values[-max_items:]
+    state["depletion_rate_history"] = history
+
+
+def _positive_float_values(values: Any) -> list[float]:
+    if not isinstance(values, list):
+        return []
+    parsed_values: list[float] = []
+    for value in values:
+        try:
+            parsed = float(value)
+        except (TypeError, ValueError):
+            continue
+        if parsed > 0:
+            parsed_values.append(parsed)
+    return parsed_values
 
 
 def add_depletion_to_restock_interval(state: dict[str, Any], ticks: int, *, max_items: int) -> None:
