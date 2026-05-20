@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 from app.predictor import METHOD_DEFAULT, METHOD_MEDIAN, predict_next_restock
-from app.tick import is_aligned_to_5_minute_tick
+from app.tick import is_aligned_to_1_minute_tick
 
 
 def dt(hour: int, minute: int) -> datetime:
@@ -42,4 +42,4 @@ def test_median_prediction() -> None:
     assert prediction.predicted_interval_ticks == 125
     assert prediction.prediction_method == METHOD_MEDIAN
     assert prediction.predicted_restock_at == restocks[-1] + timedelta(minutes=125)
-    assert is_aligned_to_5_minute_tick(prediction.predicted_restock_at)
+    assert is_aligned_to_1_minute_tick(prediction.predicted_restock_at)

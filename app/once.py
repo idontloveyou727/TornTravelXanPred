@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from dataclasses import replace
 from datetime import timezone
 
 from app.config import Config
@@ -170,6 +171,11 @@ def _sanitize_json_depletion_rates(config: Config, state: dict) -> None:
 def _handle_json_restock(config: Config, state: dict, event, observation) -> None:
     rate = _effective_depletion_rate(config, state)
     normalized = estimate_restock_time_from_observation(observation, rate)
+    event = replace(
+        event,
+        normalized_at=normalized,
+        source_delay_seconds=int((observation.observed_at - normalized).total_seconds()),
+    )
     normalized_key = encode_dt(normalized)
     state["last_estimated_restock_at"] = normalized_key
     add_recent_restock_time(state, normalized, max_items=config.prediction_history_window + 1)

@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from statistics import median
 
 from app.models import Prediction
-from app.tick import add_ticks, diff_in_ticks, floor_to_5_minute_tick, is_aligned_to_5_minute_tick
+from app.tick import add_ticks, diff_in_ticks, floor_to_1_minute_tick, is_aligned_to_1_minute_tick
 
 DEFAULT_PREDICTION_TICKS = 125
 AIRSTRIP_DURATION = timedelta(hours=1, minutes=51)
@@ -23,7 +23,7 @@ def predict_next_restock(
     ping_lead_minutes: int = 0,
     historical_interval_ticks: list[int] | None = None,
 ) -> Prediction:
-    normalized_current = floor_to_5_minute_tick(current_normalized_restock_at)
+    normalized_current = floor_to_1_minute_tick(current_normalized_restock_at)
     intervals = (historical_interval_ticks or _recent_intervals(historical_restock_times, history_window))[-history_window:]
     if len(intervals) < 3:
         interval_ticks = DEFAULT_PREDICTION_TICKS
@@ -57,9 +57,9 @@ def build_prediction(
     if ping_lead_minutes < 0:
         raise ValueError("ping_lead_minutes must be >= 0")
 
-    predicted = floor_to_5_minute_tick(predicted_restock_at)
-    if not is_aligned_to_5_minute_tick(predicted):
-        raise ValueError("Predicted restock time must be aligned to a 5-minute tick")
+    predicted = floor_to_1_minute_tick(predicted_restock_at)
+    if not is_aligned_to_1_minute_tick(predicted):
+        raise ValueError("Predicted restock time must be aligned to a 1-minute tick")
 
     departure_buffer = timedelta(minutes=departure_buffer_minutes)
     ping_lead = timedelta(minutes=ping_lead_minutes)
@@ -82,7 +82,7 @@ def build_prediction(
 
 
 def _recent_intervals(restock_times: list[datetime], history_window: int) -> list[int]:
-    ordered = sorted(floor_to_5_minute_tick(value) for value in restock_times)
+    ordered = sorted(floor_to_1_minute_tick(value) for value in restock_times)
     if len(ordered) < 2:
         return []
     intervals = [diff_in_ticks(start, end) for start, end in zip(ordered, ordered[1:])]

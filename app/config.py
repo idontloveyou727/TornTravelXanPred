@@ -129,7 +129,7 @@ def load_config() -> Config:
         ping_lead_minutes=_parse_int("PING_LEAD_MINUTES", None, 0, minimum=0),
         enable_airstrip_pings=_parse_bool("ENABLE_AIRSTRIP_PINGS", None, True),
         enable_business_class_pings=_parse_bool("ENABLE_BUSINESS_CLASS_PINGS", None, True),
-        default_depletion_rate_per_minute=_parse_float("DEFAULT_DEPLETION_RATE_PER_MINUTE", None, 312.5, minimum=0.0001),
+        default_depletion_rate_per_minute=_parse_float("DEFAULT_DEPLETION_RATE_PER_MINUTE", None, 265, minimum=0.0001),
         depletion_rate_history_window=_parse_int("DEPLETION_RATE_HISTORY_WINDOW", None, 20),
         min_depletion_rate_sample_seconds=_parse_int("MIN_DEPLETION_RATE_SAMPLE_SECONDS", None, 90, minimum=0),
         depletion_rate_min_multiplier=depletion_rate_min_multiplier,

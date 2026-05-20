@@ -5,11 +5,10 @@ from datetime import datetime, timedelta
 from statistics import median
 
 from app.models import StockObservation
-from app.tick import ceil_to_minute_tick, floor_to_minute_tick
+from app.tick import ceil_to_1_minute_tick, floor_to_1_minute_tick
 
 RESTOCK_QUANTITY = 2500
-DEFAULT_DEPLETION_MINUTES = 8
-DEFAULT_DEPLETION_RATE_PER_MINUTE = RESTOCK_QUANTITY / DEFAULT_DEPLETION_MINUTES
+DEFAULT_DEPLETION_RATE_PER_MINUTE = 265.0
 MIN_DEPLETION_RATE_SAMPLE_SECONDS = 90
 DEPLETION_RATE_MIN_MULTIPLIER = 0.25
 DEPLETION_RATE_MAX_MULTIPLIER = 1.75
@@ -91,16 +90,22 @@ def stable_depletion_rate(
     return float(median(filtered))
 
 
+def calculate_exact_restock_time(observed_at: datetime, current_quantity: int, drpm: float) -> datetime:
+    if current_quantity == RESTOCK_QUANTITY:
+        return floor_to_1_minute_tick(observed_at)
+    if drpm <= 0:
+        drpm = DEFAULT_DEPLETION_RATE_PER_MINUTE
+
+    consumed_units = RESTOCK_QUANTITY - current_quantity
+    elapsed_minutes = consumed_units / drpm
+    return floor_to_1_minute_tick(observed_at - timedelta(minutes=elapsed_minutes))
+
+
 def estimate_restock_time_from_observation(
     observation: StockObservation,
     rate_per_minute: float,
-    restock_quantity: int = RESTOCK_QUANTITY,
 ) -> datetime:
-    if rate_per_minute <= 0:
-        rate_per_minute = DEFAULT_DEPLETION_RATE_PER_MINUTE
-    consumed_units = max(0, restock_quantity - observation.quantity)
-    elapsed_minutes = consumed_units / rate_per_minute
-    return floor_to_minute_tick(observation.observed_at - timedelta(minutes=elapsed_minutes))
+    return calculate_exact_restock_time(observation.observed_at, observation.quantity, rate_per_minute)
 
 
 def estimate_depleted_time_from_last_positive(
@@ -110,7 +115,7 @@ def estimate_depleted_time_from_last_positive(
     if rate_per_minute <= 0:
         rate_per_minute = DEFAULT_DEPLETION_RATE_PER_MINUTE
     minutes_until_empty = max(0, observation.quantity) / rate_per_minute
-    estimated_at = ceil_to_minute_tick(observation.observed_at + timedelta(minutes=minutes_until_empty))
+    estimated_at = ceil_to_1_minute_tick(observation.observed_at + timedelta(minutes=minutes_until_empty))
     return DepletionEstimate(
         estimated_at=estimated_at,
         rate_per_minute=rate_per_minute,

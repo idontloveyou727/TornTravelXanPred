@@ -1,6 +1,6 @@
 # YATA UK Item 206 Restock Monitor
 
-Small Python background worker for Render. It polls the YATA travel export API, tracks item `206` in the UK, detects confirmed restocks when quantity changes from `0` to `>0`, normalizes delayed observations down to the previous 5-minute tick, predicts the next restock, and optionally sends Discord webhook notifications.
+Small Python background worker for Render. It polls the YATA travel export API, tracks item `206` in the UK, detects confirmed restocks when quantity changes from `0` to `>0`, normalizes delayed observations down to the exact estimated 1-minute restock tick, predicts the next restock, and optionally sends Discord webhook notifications.
 
 The worker stores observations, events, predictions, and notification state in SQLite so it can resume from the latest known quantity after a restart and avoid duplicate notifications.
 
@@ -31,7 +31,7 @@ GITHUB_ACTIONS_DELAY_BUFFER_MINUTES=5
 PING_LEAD_MINUTES=0
 ENABLE_AIRSTRIP_PINGS=1
 ENABLE_BUSINESS_CLASS_PINGS=1
-DEFAULT_DEPLETION_RATE_PER_MINUTE=312.5
+DEFAULT_DEPLETION_RATE_PER_MINUTE=265
 DEPLETION_RATE_HISTORY_WINDOW=20
 MIN_DEPLETION_RATE_SAMPLE_SECONDS=90
 DEPLETION_RATE_MIN_MULTIPLIER=0.25
@@ -110,7 +110,7 @@ Without a persistent disk, Render restarts may lose the local SQLite file. The w
 
 ## Free GitHub Actions Deployment
 
-This repository also supports a free GitHub Actions mode. Unlike Render, GitHub Actions does not run a continuous worker. The workflow runs every 5 minutes, performs one monitor check with `python monitor.py --once`, writes lightweight JSON state to `data/github_actions_state.json`, commits that state file if it changed, and exits.
+This repository also supports a free GitHub Actions mode. Unlike Render, GitHub Actions does not run a continuous worker. The workflow performs one monitor check with `python monitor.py --once`, writes lightweight JSON state to `data/github_actions_state.json`, commits that state file if it changed, and exits.
 
 Setup:
 
@@ -122,7 +122,7 @@ Setup:
 
 Do not commit a Discord webhook to GitHub. If an old webhook was ever shared publicly or committed anywhere, regenerate it in Discord before using this workflow.
 
-The workflow file is `.github/workflows/monitor.yml`. It runs on the schedule `2/5 * * * *`, which means every 5 minutes with a small offset to reduce schedule congestion. It can also be run manually from Actions -> YATA Restock Monitor -> Run workflow.
+The workflow file is `.github/workflows/monitor.yml`. It can be run manually from Actions -> YATA Restock Monitor -> Run workflow, or triggered by an external cronjob through `workflow_dispatch`.
 
 GitHub scheduled workflows can be delayed or skipped during platform congestion. This mode is free and useful, but it is not true real-time monitoring.
 
@@ -134,7 +134,7 @@ Departure reminder timing is designed around those delays:
 - Airstrip and Business Class departure pings can be enabled independently with `ENABLE_AIRSTRIP_PINGS` and `ENABLE_BUSINESS_CLASS_PINGS`.
 - Ticks are now one minute, and reminder predictions anchor to the estimated depleted timestamp rather than the observed restock timestamp.
 - Restock detected messages project the next cycle from the current positive observation's estimated depletion time, so their departure block stays future-facing.
-- The default stock depletion rate is `312.5` units/minute, based on a 2500-unit restock selling out in 8 minutes. The monitor updates this from clean `>0 -> >0` quantity drops, ignores `0 -> >0` and `>0 -> 0` edges, requires at least `MIN_DEPLETION_RATE_SAMPLE_SECONDS`, and filters outliers before saving `depletion_rate_history`.
+- The default stock depletion rate is `265` units/minute. The monitor updates this from clean `>0 -> >0` quantity drops, ignores `0 -> >0` and `>0 -> 0` edges, requires at least `MIN_DEPLETION_RATE_SAMPLE_SECONDS`, and filters outliers before saving `depletion_rate_history`.
 
 The default GitHub delay buffer is 5 minutes, so a latest safe departure of `00:07` becomes a recommended departure of `00:02`. With `PING_LEAD_MINUTES=0`, the ping is scheduled for `00:02`. If GitHub Actions runs a few minutes late, the notification still has a chance to arrive before the latest safe departure.
 
@@ -145,7 +145,7 @@ GITHUB_ACTIONS_DELAY_BUFFER_MINUTES: "5"
 PING_LEAD_MINUTES: "0"
 ENABLE_AIRSTRIP_PINGS: "1"
 ENABLE_BUSINESS_CLASS_PINGS: "1"
-DEFAULT_DEPLETION_RATE_PER_MINUTE: "312.5"
+DEFAULT_DEPLETION_RATE_PER_MINUTE: "265"
 DEPLETION_RATE_HISTORY_WINDOW: "20"
 MIN_DEPLETION_RATE_SAMPLE_SECONDS: "90"
 DEPLETION_RATE_MIN_MULTIPLIER: "0.25"
@@ -167,7 +167,7 @@ Increasing these values reduces late pings, but it cannot guarantee real-time de
 - `SIGTERM` and `SIGINT` trigger graceful shutdown, which is required for Render worker deploys and restarts.
 - `python monitor.py --once` runs one check and exits for GitHub Actions.
 - Restock detection only fires for `0 -> >0`.
-- Restock timestamps are stored in UTC and normalized using floor-to-previous-5-minute logic, such as `12:07:12 -> 12:05:00`.
+- Restock timestamps are stored in UTC and normalized by estimating the exact restock time from the observed quantity and DRPM, then flooring to the previous 1-minute tick.
 - Discord timestamps use `<t:UNIX:F>` and `<t:UNIX:R>` so Discord renders local time for each viewer.
 - Discord `429` responses are handled by parsing `retry_after` or rate-limit headers; no fixed Discord rate limit is hard-coded.
 

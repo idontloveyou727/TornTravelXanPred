@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from app.models import StockEvent, StockObservation
-from app.tick import floor_to_5_minute_tick
+from app.tick import floor_to_1_minute_tick
 
 EVENT_INITIAL_STATE = "INITIAL_STATE"
 EVENT_RESTOCK = "RESTOCK"
@@ -25,7 +25,7 @@ def detect_stock_event(previous: StockObservation | None, current: StockObservat
         return None
 
     if previous.quantity == 0 and current.quantity > 0:
-        normalized_at = floor_to_5_minute_tick(current.observed_at)
+        normalized_at = floor_to_1_minute_tick(current.observed_at)
         return StockEvent(
             event_type=EVENT_RESTOCK,
             item_id=current.item_id,
@@ -57,4 +57,3 @@ def detect_stock_event(previous: StockObservation | None, current: StockObservat
         previous_quantity=previous.quantity,
         current_quantity=current.quantity,
     )
-
