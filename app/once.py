@@ -17,7 +17,7 @@ from app.detector import EVENT_OUT_OF_STOCK, EVENT_RESTOCK, detect_stock_event
 from app.discord_webhook import format_airstrip_reminder, format_business_reminder, format_restock_detected, send_webhook
 from app.json_state import (
     JsonStateStore,
-    add_depletion_rates_to_bucket,
+    add_depletion_rate,
     add_depletion_to_restock_interval,
     add_pending_notification_once,
     add_pending_depletion_rate_sample,
@@ -265,12 +265,13 @@ def _commit_current_cycle_depletion_rates(config: Config, state: dict) -> None:
         return
 
     bucket = depletion_bucket_for_tct_time(restocked_at)
-    add_depletion_rates_to_bucket(
-        state,
-        bucket,
-        samples,
-        max_items=config.depletion_rate_history_window,
-    )
+    for sample in samples:
+        add_depletion_rate(
+            state,
+            sample,
+            max_items=config.depletion_rate_history_window,
+            bucket=bucket,
+        )
     clear_current_cycle_depletion_rate_samples(state)
     LOGGER.info("Committed depletion rate samples count=%s bucket=%s", len(samples), bucket)
 

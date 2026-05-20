@@ -1,7 +1,8 @@
+from copy import deepcopy
 from datetime import datetime, timezone
 
 from app.depletion import HIGH_TRAFFIC, LOW_TRAFFIC, MID_TRAFFIC
-from app.json_state import JsonStateStore, prediction_from_json, prediction_to_json
+from app.json_state import DEFAULT_STATE, JsonStateStore, add_depletion_rate, prediction_from_json, prediction_to_json
 from app.models import Prediction
 
 
@@ -44,6 +45,31 @@ def test_json_state_load_resets_legacy_flat_depletion_rate_history(tmp_path) -> 
     }
     assert loaded["depletion_rate_per_minute"] == 265
     assert loaded["current_cycle_depletion_rate_samples"] == [240.0]
+
+
+def test_add_depletion_rate_uses_observed_at_bucket() -> None:
+    state = deepcopy(DEFAULT_STATE)
+
+    add_depletion_rate(
+        state,
+        300,
+        max_items=20,
+        observed_at=datetime(2026, 5, 19, 17, 0, tzinfo=timezone.utc),
+    )
+
+    assert state["depletion_rate_history"][HIGH_TRAFFIC] == [300.0]
+    assert state["depletion_rate_history"][LOW_TRAFFIC] == []
+    assert state["depletion_rate_history"][MID_TRAFFIC] == []
+
+
+def test_add_depletion_rate_uses_explicit_bucket() -> None:
+    state = deepcopy(DEFAULT_STATE)
+
+    add_depletion_rate(state, 220, max_items=20, bucket=LOW_TRAFFIC)
+
+    assert state["depletion_rate_history"][LOW_TRAFFIC] == [220.0]
+    assert state["depletion_rate_history"][MID_TRAFFIC] == []
+    assert state["depletion_rate_history"][HIGH_TRAFFIC] == []
 
 
 def test_prediction_json_preserves_latest_departure_fields() -> None:

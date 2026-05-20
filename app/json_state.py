@@ -9,7 +9,8 @@ from typing import Any
 from app.db import decode_dt, encode_dt
 from app.depletion import (
     DEFAULT_DEPLETION_RATE_PER_MINUTE,
-    MID_TRAFFIC,
+    DEPLETION_RATE_BUCKETS,
+    depletion_bucket_for_tct_time,
     empty_depletion_rate_history,
     normalize_depletion_rate_history,
 )
@@ -117,12 +118,20 @@ def add_recent_depleted_time(state: dict[str, Any], depleted_at: datetime, *, ma
     state["last_estimated_depleted_at"] = encoded
 
 
-def add_depletion_rate(state: dict[str, Any], rate_per_minute: float, *, max_items: int) -> None:
+def add_depletion_rate(
+    state: dict[str, Any],
+    rate_per_minute: float,
+    *,
+    max_items: int,
+    observed_at: datetime | None = None,
+    bucket: str | None = None,
+) -> None:
     if rate_per_minute <= 0:
         return
+    target_bucket = _resolve_depletion_rate_bucket(observed_at=observed_at, bucket=bucket)
     add_depletion_rates_to_bucket(
         state,
-        MID_TRAFFIC,
+        target_bucket,
         [rate_per_minute],
         max_items=max_items,
     )
@@ -178,6 +187,16 @@ def add_depletion_rates_to_bucket(
     values.extend(_positive_float_values(rates_per_minute))
     history[bucket] = values[-max_items:]
     state["depletion_rate_history"] = history
+
+
+def _resolve_depletion_rate_bucket(*, observed_at: datetime | None, bucket: str | None) -> str:
+    if bucket is not None:
+        if bucket not in DEPLETION_RATE_BUCKETS:
+            raise ValueError(f"Unknown depletion rate bucket: {bucket}")
+        return bucket
+    if observed_at is None:
+        raise ValueError("add_depletion_rate requires observed_at or bucket")
+    return depletion_bucket_for_tct_time(observed_at)
 
 
 def _positive_float_values(values: Any) -> list[float]:
