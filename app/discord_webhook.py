@@ -154,11 +154,9 @@ def _ping_explanation(ping_lead_minutes: int) -> str:
     if ping_lead_minutes > 0:
         return (
             f"This ping is scheduled {ping_lead_minutes} minutes before recommended departure. "
-            "Recommended departure includes a configurable GitHub Actions delay buffer."
         )
     return (
         "This ping is scheduled for the recommended departure time. "
-        "Recommended departure includes a configurable GitHub Actions delay buffer."
     )
 
 
