@@ -81,9 +81,7 @@ def format_restock_detected(
         departure_lines.extend(
             [
                 "Airstrip:",
-                f"- Latest safe flight: {_format_ts_pair(prediction.airstrip_latest_departure_at)}",
                 f"- Recommended departure: {_format_ts_pair(prediction.airstrip_recommended_departure_at)}",
-                f"- Projected ping time: {_format_ts_pair(prediction.airstrip_ping_at)}",
             ]
         )
     if include_business:
@@ -92,9 +90,7 @@ def format_restock_detected(
         departure_lines.extend(
             [
                 "Business Class:",
-                f"- Latest safe flight: {_format_ts_pair(prediction.business_latest_departure_at)}",
                 f"- Recommended departure: {_format_ts_pair(prediction.business_recommended_departure_at)}",
-                f"- Projected ping time: {_format_ts_pair(prediction.business_ping_at)}",
             ]
         )
     if departure_lines:
@@ -109,12 +105,6 @@ def format_airstrip_reminder(prediction: Prediction, ping_lead_minutes: int = 0)
             "",
             "Predicted UK Xanax restock:",
             _format_ts_pair(prediction.predicted_restock_at),
-            "",
-            "Latest safe Airstrip flight:",
-            _format_ts_pair(prediction.airstrip_latest_departure_at),
-            "",
-            "Recommended Airstrip departure:",
-            _format_ts_pair(prediction.airstrip_recommended_departure_at),
             "",
             "Ping scheduled:",
             _format_ts_pair(prediction.airstrip_ping_at),
@@ -132,14 +122,8 @@ def format_business_reminder(prediction: Prediction, ping_lead_minutes: int = 0)
             "Predicted UK Xanax restock:",
             _format_ts_pair(prediction.predicted_restock_at),
             "",
-            "Latest safe Business Class flight:",
-            _format_ts_pair(prediction.business_latest_departure_at),
-            "",
             "Recommended Business Class departure:",
             _format_ts_pair(prediction.business_recommended_departure_at),
-            "",
-            "Ping scheduled:",
-            _format_ts_pair(prediction.business_ping_at),
             "",
             _ping_explanation(ping_lead_minutes),
         ]
