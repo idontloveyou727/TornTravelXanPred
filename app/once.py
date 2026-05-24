@@ -334,6 +334,24 @@ def process_json_due_notifications(config: Config, state: dict, *, now) -> None:
             LOGGER.exception("Failed to process JSON notification key=%s", notification.get("key"))
             notification["status"] = "FAILED"
             notification["error_message"] = str(exc)
+    _prune_completed_json_notifications(state)
+
+
+def _prune_completed_json_notifications(state: dict) -> None:
+    pending = state.get("pending_notifications", [])
+    if not isinstance(pending, list):
+        state["pending_notifications"] = []
+        return
+
+    remaining = [
+        notification
+        for notification in pending
+        if not isinstance(notification, dict) or notification.get("status") not in {"SENT", "SKIPPED"}
+    ]
+    removed = len(pending) - len(remaining)
+    if removed:
+        LOGGER.info("Pruned completed JSON notifications count=%s", removed)
+    state["pending_notifications"] = remaining
 
 
 def _json_notification_disabled(config: Config, notification_type: str) -> bool:

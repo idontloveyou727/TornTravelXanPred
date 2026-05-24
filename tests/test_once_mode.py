@@ -228,7 +228,70 @@ def test_json_late_departure_ping_sends_when_latest_safe_is_still_future(monkeyp
 
     assert len(sent_messages) == 1
     assert "Airstrip Departure Reminder" in sent_messages[0]
-    assert state["pending_notifications"][0]["status"] == "SENT"
+    assert state["pending_notifications"] == []
+    assert state["sent_notification_keys"] == [
+        "AIRSTRIP_DEPARTURE_REMINDER:test:2026-01-01T10:04:00+00:00"
+    ]
+
+
+def test_json_due_notification_cleanup_keeps_unsent_pending(monkeypatch, tmp_path) -> None:
+    config = replace(make_config(tmp_path), enable_business_class_pings=False)
+    state = JsonStateStore(config.state_path).load()
+    prediction = build_prediction(
+        event_id=0,
+        predicted_restock_at=datetime(2026, 1, 1, 12, 0, tzinfo=timezone.utc),
+        interval_ticks=125,
+        method=METHOD_DEFAULT,
+        departure_buffer_minutes=5,
+        ping_lead_minutes=0,
+    )
+    before_ping = datetime(2026, 1, 1, 10, 0, tzinfo=timezone.utc)
+    monkeypatch.setattr("app.once.send_webhook", lambda _url, _content: (True, None))
+
+    _schedule_json_departure_reminders(config, state, prediction, restock_key="test", now=before_ping)
+    process_json_due_notifications(config, state, now=before_ping)
+
+    assert len(state["pending_notifications"]) == 1
+    assert state["pending_notifications"][0]["status"] == "PENDING"
+
+
+def test_json_due_notification_cleanup_prunes_completed_legacy_entries(monkeypatch, tmp_path) -> None:
+    config = replace(make_config(tmp_path), enable_business_class_pings=False)
+    state = JsonStateStore(config.state_path).load()
+    prediction = build_prediction(
+        event_id=0,
+        predicted_restock_at=datetime(2026, 1, 1, 12, 0, tzinfo=timezone.utc),
+        interval_ticks=125,
+        method=METHOD_DEFAULT,
+        departure_buffer_minutes=5,
+        ping_lead_minutes=0,
+    )
+    before_ping = datetime(2026, 1, 1, 10, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 1, 1, 10, 10, tzinfo=timezone.utc)
+    monkeypatch.setattr("app.once.send_webhook", lambda _url, _content: (True, None))
+
+    _schedule_json_departure_reminders(config, state, prediction, restock_key="test", now=before_ping)
+    completed = {
+        **state["pending_notifications"][0],
+        "status": "SENT",
+        "sent_at": "2026-01-01T10:04:23+00:00",
+        "error_message": None,
+    }
+    state["pending_notifications"] = [
+        completed,
+        {
+            **completed,
+            "key": "AIRSTRIP_DEPARTURE_REMINDER:future:2026-01-01T10:30:00+00:00",
+            "target_time": "2026-01-01T10:30:00+00:00",
+            "status": "PENDING",
+            "sent_at": None,
+        },
+    ]
+
+    process_json_due_notifications(config, state, now=now)
+
+    assert len(state["pending_notifications"]) == 1
+    assert state["pending_notifications"][0]["key"] == "AIRSTRIP_DEPARTURE_REMINDER:future:2026-01-01T10:30:00+00:00"
 
 
 def test_json_late_departure_ping_skips_after_latest_safe_passed(tmp_path) -> None:
