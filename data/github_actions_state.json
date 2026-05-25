@@ -84,7 +84,7 @@
   "last_estimated_depleted_at": "2026-05-25T19:13:00+00:00",
   "last_estimated_restock_at": "2026-05-25T19:00:00+00:00",
   "last_notified_restock_normalized_at": "2026-05-25T19:00:00+00:00",
-  "last_observed_at": "2026-05-25T19:08:34.276722+00:00",
+  "last_observed_at": "2026-05-25T19:16:21.621165+00:00",
   "last_positive_observation": {
     "country": "UK",
     "item_id": 206,
@@ -94,28 +94,7 @@
   "last_predicted_restock_at": "2026-05-25T21:06:00+00:00",
   "last_quantity": 0,
   "last_restock_normalized_at": "2026-05-25T19:00:00+00:00",
-  "pending_notifications": [
-    {
-      "key": "AIRSTRIP_DEPARTURE_REMINDER:2026-05-25T19:13:00+00:00:2026-05-25T19:15:00+00:00",
-      "notification_type": "AIRSTRIP_DEPARTURE_REMINDER",
-      "prediction": {
-        "airstrip_departure_at": "2026-05-25T19:15:00+00:00",
-        "airstrip_latest_departure_at": "2026-05-25T19:15:00+00:00",
-        "airstrip_ping_at": "2026-05-25T19:15:00+00:00",
-        "airstrip_recommended_departure_at": "2026-05-25T19:15:00+00:00",
-        "based_on_restock_event_id": 0,
-        "business_departure_at": "2026-05-25T20:18:00+00:00",
-        "business_latest_departure_at": "2026-05-25T20:18:00+00:00",
-        "business_ping_at": "2026-05-25T20:18:00+00:00",
-        "business_recommended_departure_at": "2026-05-25T20:18:00+00:00",
-        "predicted_interval_ticks": 113,
-        "predicted_restock_at": "2026-05-25T21:06:00+00:00",
-        "prediction_method": "MEDIAN_HISTORY"
-      },
-      "status": "PENDING",
-      "target_time": "2026-05-25T19:15:00+00:00"
-    }
-  ],
+  "pending_notifications": [],
   "recent_depleted_times": [
     "2026-05-25T00:12:00+00:00",
     "2026-05-25T02:18:00+00:00",
@@ -163,6 +142,7 @@
     "AIRSTRIP_DEPARTURE_REMINDER:2026-05-25T10:54:00+00:00:2026-05-25T10:57:00+00:00",
     "AIRSTRIP_DEPARTURE_REMINDER:2026-05-25T13:00:00+00:00:2026-05-25T13:06:00+00:00",
     "AIRSTRIP_DEPARTURE_REMINDER:2026-05-25T15:00:00+00:00:2026-05-25T15:03:00+00:00",
-    "AIRSTRIP_DEPARTURE_REMINDER:2026-05-25T17:06:00+00:00:2026-05-25T17:07:00+00:00"
+    "AIRSTRIP_DEPARTURE_REMINDER:2026-05-25T17:06:00+00:00:2026-05-25T17:07:00+00:00",
+    "AIRSTRIP_DEPARTURE_REMINDER:2026-05-25T19:13:00+00:00:2026-05-25T19:15:00+00:00"
   ]
 }
