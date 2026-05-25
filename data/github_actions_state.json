@@ -68,7 +68,7 @@
       199.05325334951846
     ]
   },
-  "depletion_rate_per_minute": 263.65735275874283,
+  "depletion_rate_per_minute": 145.59855508769647,
   "depletion_to_restock_interval_ticks": [
     122,
     110,
@@ -84,7 +84,7 @@
   "last_estimated_depleted_at": "2026-05-25T15:00:00+00:00",
   "last_estimated_restock_at": "2026-05-25T14:49:00+00:00",
   "last_notified_restock_normalized_at": "2026-05-25T14:49:00+00:00",
-  "last_observed_at": "2026-05-25T15:04:31.282645+00:00",
+  "last_observed_at": "2026-05-25T16:00:59.067910+00:00",
   "last_positive_observation": {
     "country": "UK",
     "item_id": 206,
