@@ -101,7 +101,7 @@
     "correct_count": 0,
     "evaluated_count": 0,
     "last_error_ticks": null,
-    "tolerance_ticks": null
+    "tolerance_ticks": 10
   },
   "prediction_evaluation_history": [],
   "recent_depleted_times": [
@@ -161,5 +161,13 @@
     "AIRSTRIP_DEPARTURE_REMINDER:2026-05-26T14:15:00+00:00:2026-05-26T14:20:00+00:00",
     "AIRSTRIP_DEPARTURE_REMINDER:2026-05-26T16:26:00+00:00:2026-05-26T16:31:00+00:00",
     "AIRSTRIP_DEPARTURE_REMINDER:2026-05-26T18:33:00+00:00:2026-05-26T18:38:00+00:00"
-  ]
+  ],
+  "prediction_settings": {
+    "interval_min_ticks": 80,
+    "interval_max_ticks": 180,
+    "interval_mad_threshold": 3.5,
+    "accuracy_tolerance_ticks": 10,
+    "history_window": 10,
+    "restock_backfill_rate_multiplier": 4
+  }
 }
