@@ -26,6 +26,7 @@ from app.json_state import (
     clear_current_cycle_depletion_rate_samples,
     current_cycle_depletion_rate_samples,
     depletion_rate_history_for_bucket,
+    discard_sent_notification_key,
     evaluate_active_prediction,
     mark_notification_sent,
     normalize_json_state,
@@ -323,7 +324,6 @@ def _schedule_json_departure_reminders(config: Config, state: dict, prediction, 
         key = f"{notification_type}:{restock_key}:{encode_dt(target_time)}"
         if target_time <= now and latest_safe_time <= now:
             LOGGER.info("Skipping missed JSON reminder type=%s target_time=%s", notification_type, target_time.isoformat())
-            mark_notification_sent(state, key)
             continue
         if add_pending_notification_once(
             state,
@@ -380,11 +380,20 @@ def _prune_completed_json_notifications(state: dict) -> None:
         state["pending_notifications"] = []
         return
 
+    completed_keys = [
+        str(notification["key"])
+        for notification in pending
+        if isinstance(notification, dict)
+        and notification.get("status") in {"SENT", "SKIPPED"}
+        and notification.get("key") is not None
+    ]
     remaining = [
         notification
         for notification in pending
         if not isinstance(notification, dict) or notification.get("status") not in {"SENT", "SKIPPED"}
     ]
+    for key in completed_keys:
+        discard_sent_notification_key(state, key)
     removed = len(pending) - len(remaining)
     if removed:
         LOGGER.info("Pruned completed JSON notifications count=%s", removed)

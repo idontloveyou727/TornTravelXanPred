@@ -322,9 +322,7 @@ def test_json_late_departure_ping_sends_when_latest_safe_is_still_future(monkeyp
     assert len(sent_messages) == 1
     assert "Airstrip Departure Reminder" in sent_messages[0]
     assert state["pending_notifications"] == []
-    assert state["sent_notification_keys"] == [
-        "AIRSTRIP_DEPARTURE_REMINDER:test:2026-01-01T10:04:00+00:00"
-    ]
+    assert state["sent_notification_keys"] == []
 
 
 def test_json_due_notification_cleanup_keeps_unsent_pending(monkeypatch, tmp_path) -> None:
@@ -403,6 +401,4 @@ def test_json_late_departure_ping_skips_after_latest_safe_passed(tmp_path) -> No
     _schedule_json_departure_reminders(config, state, prediction, restock_key="test", now=now)
 
     assert state["pending_notifications"] == []
-    assert state["sent_notification_keys"] == [
-        "AIRSTRIP_DEPARTURE_REMINDER:test:2026-01-01T10:04:00+00:00"
-    ]
+    assert state["sent_notification_keys"] == []

@@ -47,6 +47,15 @@ def test_json_state_load_resets_legacy_flat_depletion_rate_history(tmp_path) -> 
     assert loaded["current_cycle_depletion_rate_samples"] == [240.0]
 
 
+def test_json_state_load_clears_legacy_sent_notification_keys(tmp_path) -> None:
+    path = tmp_path / "state.json"
+    path.write_text('{"sent_notification_keys": ["old-key"]}', encoding="utf-8")
+
+    loaded = JsonStateStore(path).load()
+
+    assert loaded["sent_notification_keys"] == []
+
+
 def test_add_depletion_rate_uses_observed_at_bucket() -> None:
     state = deepcopy(DEFAULT_STATE)
 

@@ -168,6 +168,7 @@ def normalize_json_state(state: dict[str, Any], *, max_history_items: int | None
         state.get("prediction_evaluation_history", [])
     )
     _update_prediction_accuracy(state, tolerance_ticks=None)
+    state["sent_notification_keys"] = []
 
 
 def depletion_rate_history_for_bucket(state: dict[str, Any], bucket: str) -> list[float]:
@@ -403,6 +404,14 @@ def mark_notification_sent(state: dict[str, Any], key: str) -> None:
     sent = state.setdefault("sent_notification_keys", [])
     if key not in sent:
         sent.append(key)
+
+
+def discard_sent_notification_key(state: dict[str, Any], key: str) -> None:
+    sent = state.get("sent_notification_keys", [])
+    if not isinstance(sent, list):
+        state["sent_notification_keys"] = []
+        return
+    state["sent_notification_keys"] = [value for value in sent if value != key]
 
 
 def prediction_to_json(prediction: Prediction) -> dict[str, Any]:
