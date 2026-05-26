@@ -74,6 +74,7 @@ class Config:
     enable_airstrip_pings: bool
     enable_business_class_pings: bool
     default_depletion_rate_per_minute: float
+    restock_backfill_rate_multiplier: float
     depletion_rate_history_window: int
     min_depletion_rate_sample_seconds: int
     depletion_rate_min_multiplier: float
@@ -97,6 +98,7 @@ class Config:
             "enable_airstrip_pings": self.enable_airstrip_pings,
             "enable_business_class_pings": self.enable_business_class_pings,
             "default_depletion_rate_per_minute": self.default_depletion_rate_per_minute,
+            "restock_backfill_rate_multiplier": self.restock_backfill_rate_multiplier,
             "depletion_rate_history_window": self.depletion_rate_history_window,
             "min_depletion_rate_sample_seconds": self.min_depletion_rate_sample_seconds,
             "depletion_rate_min_multiplier": self.depletion_rate_min_multiplier,
@@ -130,6 +132,7 @@ def load_config() -> Config:
         enable_airstrip_pings=_parse_bool("ENABLE_AIRSTRIP_PINGS", None, True),
         enable_business_class_pings=_parse_bool("ENABLE_BUSINESS_CLASS_PINGS", None, True),
         default_depletion_rate_per_minute=_parse_float("DEFAULT_DEPLETION_RATE_PER_MINUTE", None, 265, minimum=0.0001),
+        restock_backfill_rate_multiplier=_parse_float("RESTOCK_BACKFILL_RATE_MULTIPLIER", None, 4, minimum=0.0001),
         depletion_rate_history_window=_parse_int("DEPLETION_RATE_HISTORY_WINDOW", None, 20),
         min_depletion_rate_sample_seconds=_parse_int("MIN_DEPLETION_RATE_SAMPLE_SECONDS", None, 90, minimum=0),
         depletion_rate_min_multiplier=depletion_rate_min_multiplier,

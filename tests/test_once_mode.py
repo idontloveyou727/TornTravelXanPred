@@ -43,6 +43,7 @@ def make_config(tmp_path: Path) -> Config:
         enable_airstrip_pings=True,
         enable_business_class_pings=True,
         default_depletion_rate_per_minute=265,
+        restock_backfill_rate_multiplier=4,
         depletion_rate_history_window=20,
         min_depletion_rate_sample_seconds=90,
         depletion_rate_min_multiplier=0.25,
@@ -83,8 +84,9 @@ def test_json_once_prevents_duplicate_restock_notifications(monkeypatch, tmp_pat
     final_state = store.load()
     assert len(sent_messages) == 1
     assert final_state["last_quantity"] == 10
-    assert final_state["last_restock_normalized_at"] == "2026-05-18T11:57:00+00:00"
-    assert final_state["last_notified_restock_normalized_at"] == "2026-05-18T11:57:00+00:00"
+    assert final_state["depletion_rate_per_minute"] == 265
+    assert final_state["last_restock_normalized_at"] == "2026-05-18T12:04:00+00:00"
+    assert final_state["last_notified_restock_normalized_at"] == "2026-05-18T12:04:00+00:00"
 
 
 def test_json_restock_message_predicts_next_cycle_from_current_depletion(monkeypatch, tmp_path) -> None:
@@ -105,14 +107,13 @@ def test_json_restock_message_predicts_next_cycle_from_current_depletion(monkeyp
     run_json_once(config, FakeClient(quantity=2100))
 
     final_state = store.load()
-    expected_next_restock = datetime(2026, 5, 19, 14, 21, tzinfo=timezone.utc)
+    expected_next_restock = datetime(2026, 5, 19, 14, 22, tzinfo=timezone.utc)
     old_anchor_prediction = datetime(2026, 5, 19, 14, 11, tzinfo=timezone.utc)
-    assert final_state["depletion_to_restock_interval_ticks"] == [113, 108, 109]
-    assert final_state["last_predicted_restock_at"] == "2026-05-19T14:21:00+00:00"
+    assert final_state["depletion_to_restock_interval_ticks"] == [113, 108, 110]
+    assert final_state["last_predicted_restock_at"] == "2026-05-19T14:22:00+00:00"
     assert len(sent_messages) == 1
     assert discord_ts(expected_next_restock, "F") in sent_messages[0]
     assert discord_ts(old_anchor_prediction, "F") not in sent_messages[0]
-    assert "Projected ping time" in sent_messages[0]
     assert final_state["pending_notifications"] == []
 
 

@@ -32,6 +32,7 @@ PING_LEAD_MINUTES=0
 ENABLE_AIRSTRIP_PINGS=1
 ENABLE_BUSINESS_CLASS_PINGS=1
 DEFAULT_DEPLETION_RATE_PER_MINUTE=265
+RESTOCK_BACKFILL_RATE_MULTIPLIER=4
 DEPLETION_RATE_HISTORY_WINDOW=20
 MIN_DEPLETION_RATE_SAMPLE_SECONDS=90
 DEPLETION_RATE_MIN_MULTIPLIER=0.25
@@ -135,6 +136,7 @@ Departure reminder timing is designed around those delays:
 - Ticks are now one minute, and reminder predictions anchor to the estimated depleted timestamp rather than the observed restock timestamp.
 - Restock detected messages project the next cycle from the current positive observation's estimated depletion time, so their departure block stays future-facing.
 - The default stock depletion rate is `265` units/minute. The monitor updates this from clean `>0 -> >0` quantity drops, ignores `0 -> >0` and `>0 -> 0` edges, requires at least `MIN_DEPLETION_RATE_SAMPLE_SECONDS`, and filters outliers before saving `depletion_rate_history`.
+- Restock timestamp backfill uses `RESTOCK_BACKFILL_RATE_MULTIPLIER` times the effective depletion rate for the `0 -> >0` observation only, to account for fast camping immediately after a restock.
 
 The default GitHub delay buffer is 5 minutes, so a latest safe departure of `00:07` becomes a recommended departure of `00:02`. With `PING_LEAD_MINUTES=0`, the ping is scheduled for `00:02`. If GitHub Actions runs a few minutes late, the notification still has a chance to arrive before the latest safe departure.
 
@@ -146,6 +148,7 @@ PING_LEAD_MINUTES: "0"
 ENABLE_AIRSTRIP_PINGS: "1"
 ENABLE_BUSINESS_CLASS_PINGS: "1"
 DEFAULT_DEPLETION_RATE_PER_MINUTE: "265"
+RESTOCK_BACKFILL_RATE_MULTIPLIER: "4"
 DEPLETION_RATE_HISTORY_WINDOW: "20"
 MIN_DEPLETION_RATE_SAMPLE_SECONDS: "90"
 DEPLETION_RATE_MIN_MULTIPLIER: "0.25"

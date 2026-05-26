@@ -162,7 +162,8 @@ def _sanitize_json_depletion_rates(config: Config, state: dict) -> None:
 def _handle_json_restock(config: Config, state: dict, event, observation) -> None:
     rate = _effective_depletion_rate(config, state, observation.observed_at)
     state["depletion_rate_per_minute"] = rate
-    normalized = estimate_restock_time_from_observation(observation, rate)
+    backfill_rate = rate * config.restock_backfill_rate_multiplier
+    normalized = estimate_restock_time_from_observation(observation, backfill_rate)
     event = replace(
         event,
         normalized_at=normalized,
