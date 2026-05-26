@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from copy import deepcopy
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -15,6 +15,15 @@ from app.depletion import (
     normalize_depletion_rate_history,
 )
 from app.models import Prediction, StockObservation
+from app.tick import diff_in_ticks
+
+DEFAULT_PREDICTION_ACCURACY: dict[str, Any] = {
+    "evaluated_count": 0,
+    "correct_count": 0,
+    "accuracy": None,
+    "tolerance_ticks": None,
+    "last_error_ticks": None,
+}
 
 DEFAULT_STATE: dict[str, Any] = {
     "last_quantity": None,
@@ -30,6 +39,9 @@ DEFAULT_STATE: dict[str, Any] = {
     "depletion_rate_history": empty_depletion_rate_history(),
     "current_cycle_depletion_rate_samples": [],
     "depletion_to_restock_interval_ticks": [],
+    "active_prediction_evaluation": None,
+    "prediction_evaluation_history": [],
+    "prediction_accuracy": deepcopy(DEFAULT_PREDICTION_ACCURACY),
     "last_positive_observation": None,
     "pending_notifications": [],
     "sent_notification_keys": [],
@@ -149,6 +161,13 @@ def normalize_json_state(state: dict[str, Any], *, max_history_items: int | None
     state["current_cycle_depletion_rate_samples"] = _positive_float_values(
         state.get("current_cycle_depletion_rate_samples", [])
     )
+    state["active_prediction_evaluation"] = _active_prediction_evaluation_value(
+        state.get("active_prediction_evaluation")
+    )
+    state["prediction_evaluation_history"] = _prediction_evaluation_history_values(
+        state.get("prediction_evaluation_history", [])
+    )
+    _update_prediction_accuracy(state, tolerance_ticks=None)
 
 
 def depletion_rate_history_for_bucket(state: dict[str, Any], bucket: str) -> list[float]:
@@ -221,6 +240,67 @@ def add_depletion_to_restock_interval(state: dict[str, Any], ticks: int, *, max_
     state["depletion_to_restock_interval_ticks"] = values[-max_items:]
 
 
+def store_active_prediction_evaluation(
+    state: dict[str, Any],
+    prediction: Prediction,
+    *,
+    tolerance_ticks: int,
+    created_at: datetime,
+    anchor_at: datetime | None = None,
+) -> None:
+    predicted = prediction.predicted_restock_at
+    window = timedelta(minutes=tolerance_ticks)
+    state["active_prediction_evaluation"] = {
+        "predicted_restock_at": encode_dt(predicted),
+        "window_start_at": encode_dt(predicted - window),
+        "window_end_at": encode_dt(predicted + window),
+        "predicted_interval_ticks": prediction.predicted_interval_ticks,
+        "prediction_method": prediction.prediction_method,
+        "created_at": encode_dt(created_at),
+        "anchor_at": encode_dt(anchor_at) if anchor_at else None,
+    }
+    _update_prediction_accuracy(state, tolerance_ticks=tolerance_ticks)
+
+
+def evaluate_active_prediction(
+    state: dict[str, Any],
+    *,
+    actual_restock_at: datetime,
+    tolerance_ticks: int,
+    evaluated_at: datetime,
+    max_items: int,
+) -> dict[str, Any] | None:
+    active = _active_prediction_evaluation_value(state.get("active_prediction_evaluation"))
+    if active is None:
+        state["active_prediction_evaluation"] = None
+        _update_prediction_accuracy(state, tolerance_ticks=tolerance_ticks)
+        return None
+    state["active_prediction_evaluation"] = active
+
+    predicted = decode_dt(str(active["predicted_restock_at"]))
+    error_ticks = diff_in_ticks(predicted, actual_restock_at)
+    result = {
+        "predicted_restock_at": active["predicted_restock_at"],
+        "actual_restock_at": encode_dt(actual_restock_at),
+        "window_start_at": active["window_start_at"],
+        "window_end_at": active["window_end_at"],
+        "predicted_interval_ticks": int(active["predicted_interval_ticks"]),
+        "prediction_method": str(active["prediction_method"]),
+        "created_at": active["created_at"],
+        "anchor_at": active.get("anchor_at"),
+        "evaluated_at": encode_dt(evaluated_at),
+        "error_ticks": error_ticks,
+        "correct": abs(error_ticks) <= tolerance_ticks,
+        "tolerance_ticks": tolerance_ticks,
+    }
+    history = _prediction_evaluation_history_values(state.get("prediction_evaluation_history", []))
+    history.append(result)
+    state["prediction_evaluation_history"] = history[-max_items:]
+    state["active_prediction_evaluation"] = None
+    _update_prediction_accuracy(state, tolerance_ticks=tolerance_ticks)
+    return result
+
+
 def recent_restock_datetimes(state: dict[str, Any]) -> list[datetime]:
     values: list[datetime] = []
     for value in state.get("recent_restock_times", []):
@@ -229,6 +309,68 @@ def recent_restock_datetimes(state: dict[str, Any]) -> list[datetime]:
         except ValueError:
             continue
     return values
+
+
+def _prediction_evaluation_history_values(values: Any) -> list[dict[str, Any]]:
+    if not isinstance(values, list):
+        return []
+    normalized: list[dict[str, Any]] = []
+    for value in values:
+        if not isinstance(value, dict):
+            continue
+        try:
+            normalized.append(
+                {
+                    "predicted_restock_at": str(value["predicted_restock_at"]),
+                    "actual_restock_at": str(value["actual_restock_at"]),
+                    "window_start_at": str(value["window_start_at"]),
+                    "window_end_at": str(value["window_end_at"]),
+                    "predicted_interval_ticks": int(value["predicted_interval_ticks"]),
+                    "prediction_method": str(value["prediction_method"]),
+                    "created_at": str(value["created_at"]),
+                    "anchor_at": str(value["anchor_at"]) if value.get("anchor_at") is not None else None,
+                    "evaluated_at": str(value["evaluated_at"]),
+                    "error_ticks": int(value["error_ticks"]),
+                    "correct": bool(value["correct"]),
+                    "tolerance_ticks": int(value["tolerance_ticks"]),
+                }
+            )
+        except (KeyError, TypeError, ValueError):
+            continue
+    return normalized
+
+
+def _active_prediction_evaluation_value(value: Any) -> dict[str, Any] | None:
+    if not isinstance(value, dict):
+        return None
+    try:
+        return {
+            "predicted_restock_at": str(value["predicted_restock_at"]),
+            "window_start_at": str(value["window_start_at"]),
+            "window_end_at": str(value["window_end_at"]),
+            "predicted_interval_ticks": int(value["predicted_interval_ticks"]),
+            "prediction_method": str(value["prediction_method"]),
+            "created_at": str(value["created_at"]),
+            "anchor_at": str(value["anchor_at"]) if value.get("anchor_at") is not None else None,
+        }
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
+def _update_prediction_accuracy(state: dict[str, Any], *, tolerance_ticks: int | None) -> None:
+    history = _prediction_evaluation_history_values(state.get("prediction_evaluation_history", []))
+    state["prediction_evaluation_history"] = history
+    evaluated_count = len(history)
+    correct_count = sum(1 for value in history if value["correct"])
+    if tolerance_ticks is None and history:
+        tolerance_ticks = int(history[-1]["tolerance_ticks"])
+    state["prediction_accuracy"] = {
+        "evaluated_count": evaluated_count,
+        "correct_count": correct_count,
+        "accuracy": (correct_count / evaluated_count) if evaluated_count else None,
+        "tolerance_ticks": tolerance_ticks,
+        "last_error_ticks": int(history[-1]["error_ticks"]) if history else None,
+    }
 
 
 def add_pending_notification_once(

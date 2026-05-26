@@ -27,6 +27,10 @@ Optional variables:
 DISCORD_WEBHOOK_URL=
 DATABASE_PATH=./data/restock_tracker.sqlite3
 PREDICTION_HISTORY_WINDOW=10
+PREDICTION_INTERVAL_MIN_TICKS=80
+PREDICTION_INTERVAL_MAX_TICKS=180
+PREDICTION_INTERVAL_MAD_THRESHOLD=3.5
+PREDICTION_ACCURACY_TOLERANCE_TICKS=10
 GITHUB_ACTIONS_DELAY_BUFFER_MINUTES=5
 PING_LEAD_MINUTES=0
 ENABLE_AIRSTRIP_PINGS=1
@@ -135,6 +139,7 @@ Departure reminder timing is designed around those delays:
 - Airstrip and Business Class departure pings can be enabled independently with `ENABLE_AIRSTRIP_PINGS` and `ENABLE_BUSINESS_CLASS_PINGS`.
 - Ticks are now one minute, and reminder predictions anchor to the estimated depleted timestamp rather than the observed restock timestamp.
 - Restock detected messages project the next cycle from the current positive observation's estimated depletion time, so their departure block stays future-facing.
+- Prediction intervals are bounded and MAD-filtered before the median is selected, then evaluated in JSON state against a hidden `PREDICTION_ACCURACY_TOLERANCE_TICKS` window.
 - The default stock depletion rate is `265` units/minute. The monitor updates this from clean `>0 -> >0` quantity drops, ignores `0 -> >0` and `>0 -> 0` edges, requires at least `MIN_DEPLETION_RATE_SAMPLE_SECONDS`, and filters outliers before saving `depletion_rate_history`.
 - Restock timestamp backfill uses `RESTOCK_BACKFILL_RATE_MULTIPLIER` times the effective depletion rate for the `0 -> >0` observation only, to account for fast camping immediately after a restock.
 
@@ -147,6 +152,10 @@ GITHUB_ACTIONS_DELAY_BUFFER_MINUTES: "5"
 PING_LEAD_MINUTES: "0"
 ENABLE_AIRSTRIP_PINGS: "1"
 ENABLE_BUSINESS_CLASS_PINGS: "1"
+PREDICTION_INTERVAL_MIN_TICKS: "80"
+PREDICTION_INTERVAL_MAX_TICKS: "180"
+PREDICTION_INTERVAL_MAD_THRESHOLD: "3.5"
+PREDICTION_ACCURACY_TOLERANCE_TICKS: "10"
 DEFAULT_DEPLETION_RATE_PER_MINUTE: "265"
 RESTOCK_BACKFILL_RATE_MULTIPLIER: "4"
 DEPLETION_RATE_HISTORY_WINDOW: "20"

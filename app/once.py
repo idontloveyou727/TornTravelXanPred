@@ -26,12 +26,14 @@ from app.json_state import (
     clear_current_cycle_depletion_rate_samples,
     current_cycle_depletion_rate_samples,
     depletion_rate_history_for_bucket,
+    evaluate_active_prediction,
     mark_notification_sent,
     normalize_json_state,
     observation_from_json,
     prediction_from_json,
     previous_observation_from_state,
     recent_restock_datetimes,
+    store_active_prediction_evaluation,
     update_last_observation,
 )
 from app.main import run_sqlite_cycle
@@ -171,6 +173,20 @@ def _handle_json_restock(config: Config, state: dict, event, observation) -> Non
     )
     normalized_key = encode_dt(normalized)
     state["last_estimated_restock_at"] = normalized_key
+    evaluation = evaluate_active_prediction(
+        state,
+        actual_restock_at=normalized,
+        tolerance_ticks=config.prediction_accuracy_tolerance_ticks,
+        evaluated_at=utc_now(),
+        max_items=config.prediction_history_window,
+    )
+    if evaluation:
+        LOGGER.info(
+            "Evaluated prediction correct=%s error_ticks=%s accuracy=%s",
+            evaluation["correct"],
+            evaluation["error_ticks"],
+            state["prediction_accuracy"]["accuracy"],
+        )
     add_recent_restock_time(state, normalized, max_items=config.prediction_history_window + 1)
     depleted_key = state.get("last_estimated_depleted_at")
     if depleted_key:
@@ -187,8 +203,18 @@ def _handle_json_restock(config: Config, state: dict, event, observation) -> Non
         departure_buffer_minutes=config.github_actions_delay_buffer_minutes,
         ping_lead_minutes=config.ping_lead_minutes,
         historical_interval_ticks=[int(value) for value in state.get("depletion_to_restock_interval_ticks", [])],
+        interval_min_ticks=config.prediction_interval_min_ticks,
+        interval_max_ticks=config.prediction_interval_max_ticks,
+        interval_mad_threshold=config.prediction_interval_mad_threshold,
     )
     state["last_predicted_restock_at"] = encode_dt(prediction.predicted_restock_at)
+    store_active_prediction_evaluation(
+        state,
+        prediction,
+        tolerance_ticks=config.prediction_accuracy_tolerance_ticks,
+        created_at=utc_now(),
+        anchor_at=current_cycle_depletion.estimated_at,
+    )
 
     if state.get("last_notified_restock_normalized_at") != normalized_key:
         content = format_restock_detected(
@@ -236,8 +262,18 @@ def _handle_json_depletion(config: Config, state: dict, previous, observation) -
         departure_buffer_minutes=config.github_actions_delay_buffer_minutes,
         ping_lead_minutes=config.ping_lead_minutes,
         historical_interval_ticks=[int(value) for value in state.get("depletion_to_restock_interval_ticks", [])],
+        interval_min_ticks=config.prediction_interval_min_ticks,
+        interval_max_ticks=config.prediction_interval_max_ticks,
+        interval_mad_threshold=config.prediction_interval_mad_threshold,
     )
     state["last_predicted_restock_at"] = encode_dt(prediction.predicted_restock_at)
+    store_active_prediction_evaluation(
+        state,
+        prediction,
+        tolerance_ticks=config.prediction_accuracy_tolerance_ticks,
+        created_at=utc_now(),
+        anchor_at=estimate.estimated_at,
+    )
     _schedule_json_departure_reminders(
         config,
         state,

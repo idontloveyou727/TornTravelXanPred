@@ -6,7 +6,7 @@ import monitor
 from app.config import Config
 from app.depletion import HIGH_TRAFFIC, LOW_TRAFFIC, MID_TRAFFIC
 from app.discord_webhook import discord_ts
-from app.json_state import JsonStateStore
+from app.json_state import JsonStateStore, store_active_prediction_evaluation
 from app.once import _effective_depletion_rate, _schedule_json_departure_reminders, process_json_due_notifications, run_json_once
 from app.predictor import METHOD_DEFAULT, build_prediction
 
@@ -48,6 +48,10 @@ def make_config(tmp_path: Path) -> Config:
         min_depletion_rate_sample_seconds=90,
         depletion_rate_min_multiplier=0.25,
         depletion_rate_max_multiplier=1.75,
+        prediction_interval_min_ticks=80,
+        prediction_interval_max_ticks=180,
+        prediction_interval_mad_threshold=3.5,
+        prediction_accuracy_tolerance_ticks=10,
         prediction_history_window=10,
         log_level="INFO",
     )
@@ -111,9 +115,14 @@ def test_json_restock_message_predicts_next_cycle_from_current_depletion(monkeyp
     old_anchor_prediction = datetime(2026, 5, 19, 14, 11, tzinfo=timezone.utc)
     assert final_state["depletion_to_restock_interval_ticks"] == [113, 108, 110]
     assert final_state["last_predicted_restock_at"] == "2026-05-19T14:22:00+00:00"
+    assert final_state["active_prediction_evaluation"]["predicted_restock_at"] == "2026-05-19T14:22:00+00:00"
+    assert final_state["active_prediction_evaluation"]["window_start_at"] == "2026-05-19T14:12:00+00:00"
+    assert final_state["active_prediction_evaluation"]["window_end_at"] == "2026-05-19T14:32:00+00:00"
     assert len(sent_messages) == 1
     assert discord_ts(expected_next_restock, "F") in sent_messages[0]
     assert discord_ts(old_anchor_prediction, "F") not in sent_messages[0]
+    assert "window_start_at" not in sent_messages[0]
+    assert "prediction_accuracy" not in sent_messages[0]
     assert final_state["pending_notifications"] == []
 
 
@@ -140,6 +149,9 @@ def test_json_depletion_schedules_only_enabled_departure_pings(monkeypatch, tmp_
     final_state = store.load()
     assert len(final_state["pending_notifications"]) == 1
     assert final_state["pending_notifications"][0]["notification_type"] == "AIRSTRIP_DEPARTURE_REMINDER"
+    assert final_state["active_prediction_evaluation"]["predicted_restock_at"] == "2026-05-19T14:24:00+00:00"
+    assert final_state["active_prediction_evaluation"]["window_start_at"] == "2026-05-19T14:14:00+00:00"
+    assert final_state["active_prediction_evaluation"]["window_end_at"] == "2026-05-19T14:34:00+00:00"
 
 
 def test_json_depletion_commits_pending_drpm_samples_to_restock_bucket(monkeypatch, tmp_path) -> None:
@@ -165,6 +177,8 @@ def test_json_depletion_commits_pending_drpm_samples_to_restock_bucket(monkeypat
             datetime(2026, 5, 19, 10, 4, 0, tzinfo=timezone.utc),
             datetime(2026, 5, 19, 10, 4, 0, tzinfo=timezone.utc),
             datetime(2026, 5, 19, 10, 4, 0, tzinfo=timezone.utc),
+            datetime(2026, 5, 19, 10, 4, 0, tzinfo=timezone.utc),
+            datetime(2026, 5, 19, 10, 4, 0, tzinfo=timezone.utc),
         ]
     )
     monkeypatch.setattr("app.once.utc_now", lambda: next(times))
@@ -182,6 +196,84 @@ def test_json_depletion_commits_pending_drpm_samples_to_restock_bucket(monkeypat
     assert final_state["depletion_rate_history"][HIGH_TRAFFIC] == [100.0]
     assert final_state["depletion_rate_history"][LOW_TRAFFIC] == []
     assert final_state["depletion_rate_history"][MID_TRAFFIC] == []
+
+
+def test_json_restock_evaluates_active_prediction_as_correct(monkeypatch, tmp_path) -> None:
+    config = make_config(tmp_path)
+    store = JsonStateStore(config.state_path)
+    state = store.load()
+    state["last_quantity"] = 0
+    state["last_observed_at"] = "2026-05-18T12:00:00+00:00"
+    prediction = build_prediction(
+        event_id=0,
+        predicted_restock_at=datetime(2026, 5, 18, 12, 4, tzinfo=timezone.utc),
+        interval_ticks=125,
+        method=METHOD_DEFAULT,
+    )
+    store_active_prediction_evaluation(
+        state,
+        prediction,
+        tolerance_ticks=10,
+        created_at=datetime(2026, 5, 18, 10, 0, tzinfo=timezone.utc),
+        anchor_at=datetime(2026, 5, 18, 9, 59, tzinfo=timezone.utc),
+    )
+    store.save(state)
+
+    fixed_now = datetime(2026, 5, 18, 12, 7, 12, tzinfo=timezone.utc)
+    sent_messages = []
+    monkeypatch.setattr("app.once.utc_now", lambda: fixed_now)
+    monkeypatch.setattr("app.once.send_webhook", lambda _url, content: sent_messages.append(content) or (True, None))
+
+    run_json_once(config, FakeClient(quantity=10))
+
+    final_state = store.load()
+    assert final_state["prediction_evaluation_history"][0]["correct"] is True
+    assert final_state["prediction_evaluation_history"][0]["error_ticks"] == 0
+    assert final_state["prediction_accuracy"] == {
+        "evaluated_count": 1,
+        "correct_count": 1,
+        "accuracy": 1.0,
+        "tolerance_ticks": 10,
+        "last_error_ticks": 0,
+    }
+    assert final_state["active_prediction_evaluation"] is not None
+    assert "window_start_at" not in sent_messages[0]
+    assert "prediction_accuracy" not in sent_messages[0]
+
+
+def test_json_restock_evaluates_active_prediction_as_incorrect(monkeypatch, tmp_path) -> None:
+    config = make_config(tmp_path)
+    store = JsonStateStore(config.state_path)
+    state = store.load()
+    state["last_quantity"] = 0
+    state["last_observed_at"] = "2026-05-18T12:00:00+00:00"
+    prediction = build_prediction(
+        event_id=0,
+        predicted_restock_at=datetime(2026, 5, 18, 11, 50, tzinfo=timezone.utc),
+        interval_ticks=125,
+        method=METHOD_DEFAULT,
+    )
+    store_active_prediction_evaluation(
+        state,
+        prediction,
+        tolerance_ticks=10,
+        created_at=datetime(2026, 5, 18, 10, 0, tzinfo=timezone.utc),
+    )
+    store.save(state)
+
+    fixed_now = datetime(2026, 5, 18, 12, 7, 12, tzinfo=timezone.utc)
+    monkeypatch.setattr("app.once.utc_now", lambda: fixed_now)
+    monkeypatch.setattr("app.once.send_webhook", lambda _url, _content: (True, None))
+
+    run_json_once(config, FakeClient(quantity=10))
+
+    final_state = store.load()
+    assert final_state["prediction_evaluation_history"][0]["correct"] is False
+    assert final_state["prediction_evaluation_history"][0]["error_ticks"] == 14
+    assert final_state["prediction_accuracy"]["evaluated_count"] == 1
+    assert final_state["prediction_accuracy"]["correct_count"] == 0
+    assert final_state["prediction_accuracy"]["accuracy"] == 0.0
+    assert final_state["prediction_accuracy"]["last_error_ticks"] == 14
 
 
 def test_effective_depletion_rate_uses_observation_time_bucket(tmp_path) -> None:

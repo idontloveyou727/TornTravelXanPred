@@ -79,6 +79,10 @@ class Config:
     min_depletion_rate_sample_seconds: int
     depletion_rate_min_multiplier: float
     depletion_rate_max_multiplier: float
+    prediction_interval_min_ticks: int
+    prediction_interval_max_ticks: int
+    prediction_interval_mad_threshold: float
+    prediction_accuracy_tolerance_ticks: int
     prediction_history_window: int
     log_level: str
 
@@ -103,6 +107,10 @@ class Config:
             "min_depletion_rate_sample_seconds": self.min_depletion_rate_sample_seconds,
             "depletion_rate_min_multiplier": self.depletion_rate_min_multiplier,
             "depletion_rate_max_multiplier": self.depletion_rate_max_multiplier,
+            "prediction_interval_min_ticks": self.prediction_interval_min_ticks,
+            "prediction_interval_max_ticks": self.prediction_interval_max_ticks,
+            "prediction_interval_mad_threshold": self.prediction_interval_mad_threshold,
+            "prediction_accuracy_tolerance_ticks": self.prediction_accuracy_tolerance_ticks,
             "prediction_history_window": self.prediction_history_window,
             "log_level": self.log_level,
         }
@@ -117,6 +125,10 @@ def load_config() -> Config:
     depletion_rate_max_multiplier = _parse_float("DEPLETION_RATE_MAX_MULTIPLIER", None, 1.75, minimum=0.0001)
     if depletion_rate_max_multiplier < depletion_rate_min_multiplier:
         raise ValueError("DEPLETION_RATE_MAX_MULTIPLIER must be >= DEPLETION_RATE_MIN_MULTIPLIER")
+    prediction_interval_min_ticks = _parse_int("PREDICTION_INTERVAL_MIN_TICKS", None, 80)
+    prediction_interval_max_ticks = _parse_int("PREDICTION_INTERVAL_MAX_TICKS", None, 180)
+    if prediction_interval_max_ticks < prediction_interval_min_ticks:
+        raise ValueError("PREDICTION_INTERVAL_MAX_TICKS must be >= PREDICTION_INTERVAL_MIN_TICKS")
     return Config(
         yata_url=_get_env("YATA_URL", "YATA_TRAVEL_EXPORT_URL", DEFAULT_YATA_URL),
         item_id=_parse_int("ITEM_ID", "TARGET_ITEM_ID", 206),
@@ -137,6 +149,10 @@ def load_config() -> Config:
         min_depletion_rate_sample_seconds=_parse_int("MIN_DEPLETION_RATE_SAMPLE_SECONDS", None, 90, minimum=0),
         depletion_rate_min_multiplier=depletion_rate_min_multiplier,
         depletion_rate_max_multiplier=depletion_rate_max_multiplier,
+        prediction_interval_min_ticks=prediction_interval_min_ticks,
+        prediction_interval_max_ticks=prediction_interval_max_ticks,
+        prediction_interval_mad_threshold=_parse_float("PREDICTION_INTERVAL_MAD_THRESHOLD", None, 3.5, minimum=0),
+        prediction_accuracy_tolerance_ticks=_parse_int("PREDICTION_ACCURACY_TOLERANCE_TICKS", None, 10, minimum=0),
         prediction_history_window=_parse_int("PREDICTION_HISTORY_WINDOW", None, 10),
         log_level=_get_env("LOG_LEVEL", None, "INFO").upper(),
     )
