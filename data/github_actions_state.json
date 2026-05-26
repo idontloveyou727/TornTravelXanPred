@@ -81,10 +81,10 @@
     360,
     117
   ],
-  "last_estimated_depleted_at": "2026-05-26T14:15:00+00:00",
+  "last_estimated_depleted_at": "2026-05-26T16:26:00+00:00",
   "last_estimated_restock_at": "2026-05-26T16:12:00+00:00",
   "last_notified_restock_normalized_at": "2026-05-26T16:12:00+00:00",
-  "last_observed_at": "2026-05-26T16:22:24.626120+00:00",
+  "last_observed_at": "2026-05-26T16:24:24.604672+00:00",
   "last_positive_observation": {
     "country": "UK",
     "item_id": 206,
@@ -92,11 +92,31 @@
     "quantity": 665
   },
   "last_predicted_restock_at": "2026-05-26T18:22:00+00:00",
-  "last_quantity": 665,
+  "last_quantity": 0,
   "last_restock_normalized_at": "2026-05-26T16:12:00+00:00",
-  "pending_notifications": [],
+  "pending_notifications": [
+    {
+      "key": "AIRSTRIP_DEPARTURE_REMINDER:2026-05-26T16:26:00+00:00:2026-05-26T16:31:00+00:00",
+      "notification_type": "AIRSTRIP_DEPARTURE_REMINDER",
+      "prediction": {
+        "airstrip_departure_at": "2026-05-26T16:31:00+00:00",
+        "airstrip_latest_departure_at": "2026-05-26T16:31:00+00:00",
+        "airstrip_ping_at": "2026-05-26T16:31:00+00:00",
+        "airstrip_recommended_departure_at": "2026-05-26T16:31:00+00:00",
+        "based_on_restock_event_id": 0,
+        "business_departure_at": "2026-05-26T17:34:00+00:00",
+        "business_latest_departure_at": "2026-05-26T17:34:00+00:00",
+        "business_ping_at": "2026-05-26T17:34:00+00:00",
+        "business_recommended_departure_at": "2026-05-26T17:34:00+00:00",
+        "predicted_interval_ticks": 116,
+        "predicted_restock_at": "2026-05-26T18:22:00+00:00",
+        "prediction_method": "MEDIAN_HISTORY"
+      },
+      "status": "PENDING",
+      "target_time": "2026-05-26T16:31:00+00:00"
+    }
+  ],
   "recent_depleted_times": [
-    "2026-05-25T10:54:00+00:00",
     "2026-05-25T13:00:00+00:00",
     "2026-05-25T15:00:00+00:00",
     "2026-05-25T17:06:00+00:00",
@@ -106,7 +126,8 @@
     "2026-05-26T01:41:00+00:00",
     "2026-05-26T05:51:00+00:00",
     "2026-05-26T08:07:00+00:00",
-    "2026-05-26T14:15:00+00:00"
+    "2026-05-26T14:15:00+00:00",
+    "2026-05-26T16:26:00+00:00"
   ],
   "recent_restock_times": [
     "2026-05-25T12:51:00+00:00",
