@@ -93,7 +93,7 @@
   "last_estimated_depleted_at": "2026-05-26T20:39:00+00:00",
   "last_estimated_restock_at": "2026-05-26T20:28:00+00:00",
   "last_notified_restock_normalized_at": "2026-05-26T20:28:00+00:00",
-  "last_observed_at": "2026-05-26T20:40:33.880834+00:00",
+  "last_observed_at": "2026-05-26T20:42:24.508292+00:00",
   "last_positive_observation": {
     "country": "UK",
     "item_id": 206,
@@ -130,7 +130,7 @@
     "correct_count": 0,
     "evaluated_count": 0,
     "last_error_ticks": null,
-    "tolerance_ticks": 10
+    "tolerance_ticks": null
   },
   "prediction_evaluation_history": [],
   "prediction_settings": {
