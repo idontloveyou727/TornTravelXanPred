@@ -1,18 +1,14 @@
 {
   "active_prediction_evaluation": {
-    "anchor_at": "2026-06-02T06:25:00+00:00",
-    "created_at": "2026-06-02T06:08:30.074241+00:00",
+    "anchor_at": "2026-06-02T06:16:00+00:00",
+    "created_at": "2026-06-02T06:16:24.091384+00:00",
     "predicted_interval_ticks": 118,
-    "predicted_restock_at": "2026-06-02T08:23:00+00:00",
+    "predicted_restock_at": "2026-06-02T08:14:00+00:00",
     "prediction_method": "MEDIAN_HISTORY",
-    "window_end_at": "2026-06-02T08:33:00+00:00",
-    "window_start_at": "2026-06-02T08:13:00+00:00"
+    "window_end_at": "2026-06-02T08:24:00+00:00",
+    "window_start_at": "2026-06-02T08:04:00+00:00"
   },
-  "current_cycle_depletion_rate_samples": [
-    476.6247936577451,
-    262.4209654489511,
-    315.7706977793819
-  ],
+  "current_cycle_depletion_rate_samples": [],
   "depletion_rate_history": {
     "HIGH_TRAFFIC": [
       25.265727685197454,
@@ -37,9 +33,6 @@
       118.86471241856174
     ],
     "LOW_TRAFFIC": [
-      93.75732287587168,
-      14.491237028208733,
-      71.33316534184183,
       247.20769345657425,
       193.55513615492558,
       376.9532553572264,
@@ -56,7 +49,10 @@
       32.745615514813984,
       57.65080139203694,
       0.9897300904595983,
-      58.63243241089096
+      58.63243241089096,
+      476.6247936577451,
+      262.4209654489511,
+      315.7706977793819
     ],
     "MID_TRAFFIC": [
       371.0599725680663,
@@ -81,7 +77,7 @@
       198.4661961431901
     ]
   },
-  "depletion_rate_per_minute": 146.7408156700777,
+  "depletion_rate_per_minute": 170.36172246910908,
   "depletion_to_restock_interval_ticks": [
     118,
     126,
@@ -94,20 +90,41 @@
     33,
     76
   ],
-  "last_estimated_depleted_at": "2026-06-02T04:52:00+00:00",
+  "last_estimated_depleted_at": "2026-06-02T06:16:00+00:00",
   "last_estimated_restock_at": "2026-06-02T06:08:00+00:00",
   "last_notified_restock_normalized_at": "2026-06-02T06:08:00+00:00",
-  "last_observed_at": "2026-06-02T06:14:23.827052+00:00",
+  "last_observed_at": "2026-06-02T06:16:24.090942+00:00",
   "last_positive_observation": {
     "country": "UK",
     "item_id": 206,
     "observed_at": "2026-06-02T06:14:23.827052+00:00",
     "quantity": 255
   },
-  "last_predicted_restock_at": "2026-06-02T08:23:00+00:00",
-  "last_quantity": 255,
+  "last_predicted_restock_at": "2026-06-02T08:14:00+00:00",
+  "last_quantity": 0,
   "last_restock_normalized_at": "2026-06-02T06:08:00+00:00",
-  "pending_notifications": [],
+  "pending_notifications": [
+    {
+      "key": "AIRSTRIP_DEPARTURE_REMINDER:2026-06-02T06:16:00+00:00:2026-06-02T06:23:00+00:00",
+      "notification_type": "AIRSTRIP_DEPARTURE_REMINDER",
+      "prediction": {
+        "airstrip_departure_at": "2026-06-02T06:23:00+00:00",
+        "airstrip_latest_departure_at": "2026-06-02T06:23:00+00:00",
+        "airstrip_ping_at": "2026-06-02T06:23:00+00:00",
+        "airstrip_recommended_departure_at": "2026-06-02T06:23:00+00:00",
+        "based_on_restock_event_id": 0,
+        "business_departure_at": "2026-06-02T07:26:00+00:00",
+        "business_latest_departure_at": "2026-06-02T07:26:00+00:00",
+        "business_ping_at": "2026-06-02T07:26:00+00:00",
+        "business_recommended_departure_at": "2026-06-02T07:26:00+00:00",
+        "predicted_interval_ticks": 118,
+        "predicted_restock_at": "2026-06-02T08:14:00+00:00",
+        "prediction_method": "MEDIAN_HISTORY"
+      },
+      "status": "PENDING",
+      "target_time": "2026-06-02T06:23:00+00:00"
+    }
+  ],
   "prediction_accuracy": {
     "accuracy": 0.7,
     "correct_count": 7,
@@ -266,7 +283,6 @@
     "restock_backfill_rate_multiplier": 4
   },
   "recent_depleted_times": [
-    "2026-06-01T08:48:00+00:00",
     "2026-06-01T10:54:00+00:00",
     "2026-06-01T13:00:00+00:00",
     "2026-06-01T15:12:00+00:00",
@@ -276,7 +292,8 @@
     "2026-06-01T23:31:00+00:00",
     "2026-06-02T01:43:00+00:00",
     "2026-06-02T04:11:00+00:00",
-    "2026-06-02T04:52:00+00:00"
+    "2026-06-02T04:52:00+00:00",
+    "2026-06-02T06:16:00+00:00"
   ],
   "recent_restock_times": [
     "2026-06-01T10:48:00+00:00",
