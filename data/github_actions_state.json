@@ -1,12 +1,12 @@
 {
   "active_prediction_evaluation": {
-    "anchor_at": "2026-06-02T16:43:00+00:00",
-    "created_at": "2026-06-02T16:42:33.681733+00:00",
-    "predicted_interval_ticks": 120,
-    "predicted_restock_at": "2026-06-02T18:43:00+00:00",
+    "anchor_at": "2026-06-02T18:55:00+00:00",
+    "created_at": "2026-06-02T18:48:28.680583+00:00",
+    "predicted_interval_ticks": 121,
+    "predicted_restock_at": "2026-06-02T20:56:00+00:00",
     "prediction_method": "MEDIAN_HISTORY",
-    "window_end_at": "2026-06-02T18:53:00+00:00",
-    "window_start_at": "2026-06-02T18:33:00+00:00"
+    "window_end_at": "2026-06-02T21:06:00+00:00",
+    "window_start_at": "2026-06-02T20:46:00+00:00"
   },
   "current_cycle_depletion_rate_samples": [],
   "depletion_rate_history": {
@@ -79,7 +79,6 @@
   },
   "depletion_rate_per_minute": 277.0116462855916,
   "depletion_to_restock_interval_ticks": [
-    112,
     120,
     131,
     33,
@@ -88,44 +87,31 @@
     123,
     117,
     120,
-    118
+    118,
+    124
   ],
   "last_estimated_depleted_at": "2026-06-02T16:43:00+00:00",
-  "last_estimated_restock_at": "2026-06-02T16:38:00+00:00",
-  "last_notified_restock_normalized_at": "2026-06-02T16:38:00+00:00",
-  "last_observed_at": "2026-06-02T16:52:27.224763+00:00",
+  "last_estimated_restock_at": "2026-06-02T18:47:00+00:00",
+  "last_notified_restock_normalized_at": "2026-06-02T18:47:00+00:00",
+  "last_observed_at": "2026-06-02T18:48:28.680037+00:00",
   "last_positive_observation": {
     "country": "UK",
     "item_id": 206,
-    "observed_at": "2026-06-02T16:41:03.639763+00:00",
-    "quantity": 367
+    "observed_at": "2026-06-02T18:48:28.680037+00:00",
+    "quantity": 1534
   },
-  "last_predicted_restock_at": "2026-06-02T18:43:00+00:00",
-  "last_quantity": 0,
-  "last_restock_normalized_at": "2026-06-02T16:38:00+00:00",
+  "last_predicted_restock_at": "2026-06-02T20:56:00+00:00",
+  "last_quantity": 1534,
+  "last_restock_normalized_at": "2026-06-02T18:47:00+00:00",
   "pending_notifications": [],
   "prediction_accuracy": {
     "accuracy": 0.7,
     "correct_count": 7,
     "evaluated_count": 10,
-    "last_error_ticks": -2,
+    "last_error_ticks": 4,
     "tolerance_ticks": 10
   },
   "prediction_evaluation_history": [
-    {
-      "actual_restock_at": "2026-06-01T23:20:00+00:00",
-      "anchor_at": "2026-06-01T21:28:00+00:00",
-      "correct": true,
-      "created_at": "2026-06-01T21:28:21.300127+00:00",
-      "error_ticks": -7,
-      "evaluated_at": "2026-06-01T23:20:43.901130+00:00",
-      "predicted_interval_ticks": 119,
-      "predicted_restock_at": "2026-06-01T23:27:00+00:00",
-      "prediction_method": "MEDIAN_HISTORY",
-      "tolerance_ticks": 10,
-      "window_end_at": "2026-06-01T23:37:00+00:00",
-      "window_start_at": "2026-06-01T23:17:00+00:00"
-    },
     {
       "actual_restock_at": "2026-06-02T01:31:00+00:00",
       "anchor_at": "2026-06-01T23:31:00+00:00",
@@ -251,6 +237,20 @@
       "tolerance_ticks": 10,
       "window_end_at": "2026-06-02T16:50:00+00:00",
       "window_start_at": "2026-06-02T16:30:00+00:00"
+    },
+    {
+      "actual_restock_at": "2026-06-02T18:47:00+00:00",
+      "anchor_at": "2026-06-02T16:43:00+00:00",
+      "correct": true,
+      "created_at": "2026-06-02T16:42:33.681733+00:00",
+      "error_ticks": 4,
+      "evaluated_at": "2026-06-02T18:48:28.680302+00:00",
+      "predicted_interval_ticks": 120,
+      "predicted_restock_at": "2026-06-02T18:43:00+00:00",
+      "prediction_method": "MEDIAN_HISTORY",
+      "tolerance_ticks": 10,
+      "window_end_at": "2026-06-02T18:53:00+00:00",
+      "window_start_at": "2026-06-02T18:33:00+00:00"
     }
   ],
   "prediction_settings": {
@@ -275,7 +275,6 @@
     "2026-06-02T16:43:00+00:00"
   ],
   "recent_restock_times": [
-    "2026-06-01T21:17:00+00:00",
     "2026-06-01T23:20:00+00:00",
     "2026-06-02T01:31:00+00:00",
     "2026-06-02T03:54:00+00:00",
@@ -285,7 +284,8 @@
     "2026-06-02T10:27:00+00:00",
     "2026-06-02T12:29:00+00:00",
     "2026-06-02T14:36:00+00:00",
-    "2026-06-02T16:38:00+00:00"
+    "2026-06-02T16:38:00+00:00",
+    "2026-06-02T18:47:00+00:00"
   ],
   "sent_notification_keys": []
 }
